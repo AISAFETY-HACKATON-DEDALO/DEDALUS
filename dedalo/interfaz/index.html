@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HDEF · DÉDALO</title>
+<meta name="description" content="Una aplicación sintética, un token señuelo, un laberinto falso y la revocación de quien lo usa. Cada carácter es una solicitud HTTP real en este computador.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="lamina">
+  <header class="cab">
+    <div class="marca"><b id="marca"></b><span id="lema"></span></div>
+    <nav class="puertas" id="modos" aria-label="nivel de defensa"></nav>
+    <div class="arriba">
+      <div class="reloj"><b id="reloj"></b><span id="episodio"></span></div>
+      <button class="pildora" id="respuesta" type="button"></button>
+      <button class="pildora" id="son" type="button" aria-pressed="true">♪</button>
+      <button class="pildora" id="ayuda-b" type="button" aria-haspopup="dialog">?</button>
+    </div>
+  </header>
+
+  <main class="cuerpo">
+    <section class="forma" aria-labelledby="voz">
+      <p class="voz" id="voz" aria-live="polite"></p>
+      <p class="eco" id="eco"></p>
+      <canvas id="lienzo"></canvas>
+      <p class="nota" id="escala"></p>
+    </section>
+
+    <aside class="info">
+      <h1 id="p-titulo"></h1>
+      <p class="sub" id="p-sub"></p>
+      <div class="cifra"><b id="p-cifra"></b><div><span id="p-unidad"></span><p class="titular" id="p-titular"></p></div></div>
+      <p class="sub" id="p-pie"></p>
+
+      <p class="marcador" id="p-marcador"></p>
+      <p class="sub" id="p-marcador-pie"></p>
+
+      <h2 id="s-titulo"></h2>
+      <ul class="sesiones" id="sesiones"></ul>
+
+      <h2 id="r-titulo"></h2>
+      <ol class="registro" id="registro"></ol>
+      <p class="sub" id="r-pie"></p>
+    </aside>
+  </main>
+
+  <footer class="mando">
+    <div class="fila">
+      <span class="rotulo" id="m-eres"></span>
+      <span class="grupo" id="roles"></span>
+      <span class="sub" id="m-rol"></span>
+    </div>
+    <form class="fila linea" id="linea" autocomplete="off">
+      <span class="verbo">GET</span>
+      <input id="ruta" name="ruta" type="text" spellcheck="false" maxlength="160" value="/api/documents" aria-label="ruta">
+      <span class="rotulo" id="m-con"></span>
+      <span class="grupo" id="vias"></span>
+      <button class="pildora clave" id="enviar" type="submit"></button>
+    </form>
+    <div class="dock" id="dock"></div>
+  </footer>
+</div>
+
+<div class="hoja" id="ayuda" role="dialog" aria-modal="true" aria-labelledby="a-titulo" hidden>
+  <div class="hoja-in">
+    <h2 id="a-titulo"></h2>
+    <div id="a-cuerpo"></div>
+    <h3 id="a-limites"></h3>
+    <div id="a-limites-cuerpo"></div>
+    <h3 id="a-teclas"></h3>
+    <p id="a-teclas-cuerpo"></p>
+    <button class="pildora" id="a-cerrar" type="button"></button>
+  </div>
+</div>
+
+<script src="textos.js"></script>
+<script src="glifos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

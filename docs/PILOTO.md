@@ -1,5 +1,7 @@
 # Piloto editable para la jornada
 
+Para presentar en vivo está la consola: `python -m dedalo.consola --abrir` y la tecla G corre este mismo guion en pantalla. El informe de abajo es el respaldo que se abre sin servidor.
+
 ## Preparación: dos comandos
 
 ```powershell
@@ -36,7 +38,7 @@ No existe nivel T3 adaptativo todavía. No son SL1–SL5, certificaciones ni gar
 ## Qué responder según comentarios del equipo
 
 - Falta IA: integrar primero el cliente LLM acotado, manteniendo el evaluador independiente. Elegir proveedor y presupuesto antes de usar claves.
-- Falta aislamiento: separar protegido/señuelo en servicios sin conexión cruzada y añadir prueba de acceso directo. La v0.2 no lo demuestra.
+- Falta aislamiento: separar protegido/señuelo en servicios sin conexión cruzada y añadir prueba de acceso directo. La versión actual no lo demuestra.
 - La trampa es obvia: mejorar coherencia narrativa y datos ficticios, luego evaluar abandono frente al mismo atacante.
 - Demasiado agresivo: usar observe como comparación, después diseñar confirmación o umbral que no dependa de identidad aportada por cliente.
 - Piden algo instalable: primera integración HTTP explícita; no prometer compatibilidad universal.

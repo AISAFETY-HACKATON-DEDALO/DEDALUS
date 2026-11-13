@@ -14,11 +14,11 @@ Ramas: `codex/core`, `claude/policy-review`, `grok/evaluation`. Una persona inte
 
 ## Encargo para Claude / Fable 5.2
 
-Lee README.md, ARQUITECTURA.md, dedalo/core.py y tests/test_lab.py. Revisa v0.1 como laboratorio HTTP, no como defensa de producción. Busca errores en correlación de identidad, revocación, límites y separación de datos. Un auditor legítimo que usa el token se bloquea: propone una política que reduzca ese falso positivo sin aceptar identidad ni permisos aportados por el cliente. Entrega hallazgos reproducibles y propuesta en `reviews/claude.md`. Si implementas, usa `claude/policy-review` y pruebas. No integres modelos, interfaz ni cambios generales de estructura.
+Hecho e integrado en `main` (`reviews/claude.md`). El encargo era: lee README.md, docs/ARQUITECTURA.md, dedalo/core.py y tests/test_lab.py. Revisa v0.1 como laboratorio HTTP, no como defensa de producción. Busca errores en correlación de identidad, revocación, límites y separación de datos. Un auditor legítimo que usa el token se bloquea: propone una política que reduzca ese falso positivo sin aceptar identidad ni permisos aportados por el cliente. Entrega hallazgos reproducibles y propuesta en `reviews/claude.md`. Si implementas, usa `claude/policy-review` y pruebas. No integres modelos, interfaz ni cambios generales de estructura.
 
 ## Encargo para Grok
 
-Lee README.md, EXPERIMENTO.md, scenarios.json y dedalo/demo.py. Diseña en `evaluation/PROTOCOL.md` una comparación que no obligue al atacante a seguir señuelos. Incluye ignorar la trampa, detectar contradicciones y abandonar. Distingue protección, detección, retención, tokens, costo y falsos positivos. Fija presupuestos iguales, casos reservados y éxito observable. No afirmes dificultad específica para Fable sin datos. Trabaja en `grok/evaluation`; no cambies dedalo/core.py ni pruebas existentes sin acordar el contrato. Llamadas pagadas y objetivos externos fuera del encargo.
+Lee README.md, docs/EXPERIMENTO.md, scenarios.json y dedalo/demo.py. Diseña en `evaluation/PROTOCOL.md` una comparación que no obligue al atacante a seguir señuelos. Incluye ignorar la trampa, detectar contradicciones y abandonar. Distingue protección, detección, retención, tokens, costo y falsos positivos. Fija presupuestos iguales, casos reservados y éxito observable. No afirmes dificultad específica para Fable sin datos. Trabaja en `grok/evaluation`; no cambies dedalo/core.py ni pruebas existentes sin acordar el contrato. Llamadas pagadas y objetivos externos fuera del encargo.
 
 ## Encargo de Codex
 

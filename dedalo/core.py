@@ -210,7 +210,13 @@ class Lab:
 
     def snapshot(self):
         with self.lock:
+            now = self.clock()
             return {"run_id": self.run_id, "mode": self.mode, "response": self.response,
+                    "limits": {"max_steps": self.max_steps, "ttl": self.ttl},
+                    "audit_windows": {ref: {"hits_left": g.max_hits - g.hits,
+                                            "seconds_left": round(max(0.0, g.expires - now), 3)}
+                                      for ref, g in self.grants.items()
+                                      if now < g.expires and g.hits < g.max_hits},
                     "event_count": self.event_count, "events": list(self.events),
                     "truncated": self.event_count > len(self.events),
                     "sessions": {s.ref: {"revoked": s.revoked, "flagged": s.flagged,
@@ -219,5 +225,6 @@ class Lab:
                     # Per-decoy evidence is bounded by issued decoys, so request floods cannot evict it.
                     "decoys": {h.ref: {"source_ref": self.sessions[h.source].ref,
                                        "first_event": h.first_event, "served": h.used,
+                                       "stage": h.stage, "age_seconds": round(now - h.created, 3),
                                        "rejected": h.rejected, "last_action": h.last_action}
                                for h in self.honey.values()}}

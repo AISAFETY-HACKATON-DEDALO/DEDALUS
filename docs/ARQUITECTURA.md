@@ -1,6 +1,6 @@
 # Arquitectura inicial
 
-**Actualización 13/11/2026:** arquitectura OBJETIVO. La v0.1 implementa el flujo en un proceso Python con separación lógica. No hay todavía separación física, selector IA, panel ni contenedores. Código: `dedalo/core.py`, `dedalo/server.py`; verificación: `dedalo/demo.py`, `tests/test_lab.py`.
+**Estado al 13/11/2026:** esta es la arquitectura OBJETIVO. Lo construido corre en un proceso de Python con separación lógica: no hay separación física, selector con IA ni contenedores. El panel de eventos existe como consola local (`dedalo/consola.py`, `dedalo/interfaz/`). Código: `dedalo/core.py`, `dedalo/server.py`; verificación: `dedalo/demo.py`, `tests/`.
 
 ## Escenario y amenaza
 

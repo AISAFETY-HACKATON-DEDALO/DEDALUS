@@ -1,0 +1,128 @@
+/* Siempre oscura. El color es dato o es voz, nunca adorno (docs/DISENO.md).
+   Negro Olbers de fondo, Tiza para la estructura, Regolito para lo secundario, Aurora solo cuando algo pasa. */
+@font-face{font-family:"VT323";font-style:normal;font-weight:400;font-display:swap;src:url(fuentes/vt323.woff2) format("woff2")}
+@font-face{font-family:"Share Tech Mono";font-style:normal;font-weight:400;font-display:swap;src:url(fuentes/share-tech-mono.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:400;font-display:swap;src:url(fuentes/ibm-plex-mono.woff2) format("woff2")}
+:root{
+  --fondo:#050505; --tiza:#ececec; --regolito:#8d8d8d; --claro:#b4b4b4; --linea:#262626; --aurora:#ff6b9a;
+  --alice:#7fb2e0; --bob:#a9d18e; --visitor:#f2b33d; --azogue:#9fdcd9; --hilo:#cf84e6;
+  --pix:"VT323","Share Tech Mono",ui-monospace,monospace;
+  --mono:"Share Tech Mono",ui-monospace,Menlo,monospace;
+  --cuerpo:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --ac:var(--visitor);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--fondo);color:var(--tiza);font:13px/1.5 var(--cuerpo);overflow:hidden}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+h1,h2,h3,p,ul,ol,pre{margin:0;padding:0}
+ul,ol{list-style:none}
+
+.lamina{position:fixed;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;max-width:1680px;margin:0 auto;padding:18px 44px 14px}
+
+/* arriba: la marca, los niveles (las tres puertas), la hora del episodio */
+.cab{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px}
+.marca b{display:block;font:400 34px/1 var(--pix);letter-spacing:.04em}
+.marca span,.sub,.rotulo,.nota{font:11.5px/1.45 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--regolito)}
+.puertas{display:flex;gap:34px}
+.puertas button{background:none;border:0;border-bottom:2px solid transparent;padding:4px 0;cursor:pointer;font:400 21px/1 var(--pix);letter-spacing:.06em;color:var(--regolito)}
+.puertas button:hover{color:var(--tiza)}
+.puertas button[aria-current=true]{color:var(--tiza);border-bottom-color:var(--tiza)}
+.arriba{display:flex;justify-content:flex-end;align-items:center;gap:10px}
+.reloj{text-align:right;margin-right:8px}
+.reloj b{display:block;font:400 26px/1 var(--pix);letter-spacing:.06em}
+.reloj span{font:11px/1.3 var(--mono);letter-spacing:.07em;color:var(--regolito);text-transform:uppercase}
+
+.pildora{font:400 18px/1 var(--pix);letter-spacing:.06em;color:var(--tiza);background:rgba(8,8,8,.72);border:1px solid rgba(236,236,236,.2);border-radius:999px;height:36px;min-width:36px;padding:0 14px;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s,color .15s}
+.pildora:hover{border-color:rgba(236,236,236,.55)}
+.pildora:active{transform:translateY(1px)}
+.pildora[aria-pressed=true]{background:var(--c,var(--ac));color:#050505;border-color:var(--c,var(--ac))}
+.pildora:disabled{color:#555;border-color:#222;cursor:default}
+#son[aria-pressed]{background:rgba(8,8,8,.72);color:var(--tiza);border-color:rgba(236,236,236,.2)}
+#son[aria-pressed=false]{color:#555}
+#respuesta{color:var(--aurora);border-color:rgba(255,107,154,.45)}
+#respuesta[data-r=observe]{color:var(--claro);border-color:rgba(236,236,236,.2)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+
+/* el cuerpo: la forma a la izquierda, la información a la derecha, una costura fina entre las dos */
+.cuerpo{display:grid;grid-template-columns:minmax(0,1fr) 430px;min-height:0}
+.forma{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:0;min-width:0;padding-right:28px}
+.voz{font:400 24px/1.15 var(--pix);letter-spacing:.05em;min-height:28px;color:var(--tiza)}
+.eco{font:12px/1.45 var(--mono);color:var(--claro);min-height:35px;max-height:35px;overflow:hidden;overflow-wrap:anywhere;margin-top:4px}
+.eco b{font:400 20px/1 var(--pix);color:var(--tiza);margin-right:8px;letter-spacing:.05em}
+.eco b.no{color:var(--regolito)}
+.voz.evento{color:var(--aurora)}
+#lienzo{display:block;width:100%;height:100%;min-height:0;cursor:default;outline:none}
+.nota{padding-top:4px}
+
+.info{border-left:1px solid var(--linea);padding:0 0 0 28px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3a3a3a transparent;min-height:0}
+.info h1{font:400 26px/1 var(--pix);letter-spacing:.04em}
+.info h2{font:400 20px/1 var(--pix);letter-spacing:.06em;margin-top:12px;padding-top:10px;border-top:1px dashed var(--linea)}
+.cifra{display:flex;align-items:center;gap:14px;margin:8px 0 6px;min-height:84px}
+.cifra b{font:400 104px/.8 var(--pix);letter-spacing:.02em;color:var(--hilo);min-width:.42em}
+.cifra span{display:block;font:11.5px/1.3 var(--mono);letter-spacing:.07em;color:var(--claro)}
+.titular{font:600 17px/1.25 var(--sans);color:#fff;margin-top:4px}
+.marcador{font:400 21px/1.1 var(--pix);letter-spacing:.05em;margin-top:10px}
+.marcador.mal{color:var(--aurora)}
+
+.sesiones{margin-top:4px}
+.sesiones li{display:grid;grid-template-columns:104px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:30px}
+.sesiones b{font:400 21px/1 var(--pix);letter-spacing:.05em;color:var(--c)}
+.sesiones span{font:11.5px/1.3 var(--mono);letter-spacing:.06em;color:var(--claro);text-transform:uppercase}
+.sesiones .caida span{color:var(--aurora)}
+.sesiones .pildora{height:26px;font-size:15px;padding:0 10px}
+
+.registro{margin-top:4px}
+.registro li{display:grid;grid-template-columns:30px 76px minmax(0,1fr) 34px;gap:6px;font:11.5px/1.75 var(--mono);color:var(--claro);white-space:nowrap}
+.registro li>*{overflow:hidden;text-overflow:ellipsis}
+.registro .n{color:var(--regolito)}
+.registro .quien{color:var(--c);text-transform:uppercase}
+.registro .st{text-align:right;color:var(--tiza)}
+.registro .no .st{color:var(--regolito)}
+.registro .ev{grid-column:2/-1;color:var(--aurora);text-transform:uppercase;letter-spacing:.05em;line-height:1.3;padding-bottom:3px;white-space:normal}
+
+/* abajo: lo que haces aquí. El dock es la única barra de acciones. */
+.mando{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--linea);padding-top:10px}
+.fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.grupo{display:flex;gap:6px;flex-wrap:wrap}
+.rotulo{color:var(--claro)}
+.verbo{font:400 24px/1 var(--pix);color:var(--ac);letter-spacing:.06em}
+.linea input{flex:1 1 260px;min-width:0;height:36px;background:transparent;border:0;border-bottom:1px solid #3a3a3a;font:400 24px/1 var(--pix);letter-spacing:.04em;color:var(--tiza);padding:0 2px;caret-color:var(--ac)}
+.linea input:focus-visible{outline:0;border-bottom-color:var(--ac)}
+.pildora.clave{background:var(--ac);color:#050505;border-color:var(--ac)}
+.dock{display:flex;align-items:center;gap:2px;flex-wrap:wrap;min-height:44px;padding:3px 5px;background:rgba(12,12,12,.9);border:1px solid rgba(236,236,236,.13);border-radius:22px}
+.dock .pildora{background:transparent;border-color:transparent;color:#cfcfcf}
+.dock .pildora:hover{background:rgba(236,236,236,.07);color:var(--tiza)}
+.dock .pildora.sigue{color:var(--hilo)}
+.dock .pildora.entra{color:var(--azogue)}
+.dock .pildora[aria-pressed=true]{background:var(--aurora);color:#050505}
+.dock .hueco{flex:1}
+
+.hoja{position:fixed;inset:0;background:rgba(5,5,5,.96);display:grid;place-items:center;padding:24px;z-index:5;overflow-y:auto}
+.hoja-in{max-width:720px;display:flex;flex-direction:column;gap:12px}
+.hoja h2{font:400 40px/1 var(--pix);letter-spacing:.04em}
+.hoja h3{font:400 24px/1 var(--pix);letter-spacing:.05em;color:var(--aurora);margin-top:8px}
+.hoja p{color:var(--claro);font:13px/1.6 var(--cuerpo);margin-bottom:6px}
+.hoja .pildora{align-self:flex-start;margin-top:6px}
+
+@media (min-height:900px){.cifra b{font-size:132px}.cifra{min-height:108px}.info h1{font-size:30px}.info h2{margin-top:18px;padding-top:12px}.sesiones li{min-height:36px}}
+@media (max-width:1100px){.cuerpo{grid-template-columns:minmax(0,1fr) 340px}.cifra b{font-size:88px}.puertas{gap:18px}}
+@media (max-width:860px){
+  body{overflow:auto}
+  .lamina{position:static;display:flex;flex-direction:column;gap:0;padding:14px 14px 20px}
+  .cuerpo{display:contents}
+  .cab{order:0}.forma{order:1}.mando{order:2}.info{order:3}
+  .cab{grid-template-columns:1fr auto;row-gap:8px}
+  .puertas{grid-column:1/-1;order:3;justify-content:space-between;gap:8px}
+  .puertas button{font-size:19px}
+  .reloj{display:none}
+  .forma{display:block;padding:10px 0 0}
+  #lienzo{height:150vw;max-height:760px}
+  .info{border-left:0;border-top:1px solid var(--linea);padding:16px 0 0;margin-top:16px;overflow:visible}
+  .mando{margin-top:10px}
+  .dock{border-radius:14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

@@ -1,5 +1,6 @@
 """Configurable pilot and offline presentation from measured HTTP runs."""
 import argparse
+import base64
 from datetime import datetime, timezone
 from html import escape
 import json
@@ -30,34 +31,103 @@ def load_config(path):
     return config
 
 
+FUENTES = Path(__file__).parent / "interfaz" / "fuentes"
+COLOR = {"legitimate_before": "egeo", "legitimate_after": "egeo", "decoy_follow": "hilo"}
+
+ESTILO = """
+:root{--fondo:#050505;--tiza:#ececec;--regolito:#8d8d8d;--claro:#b4b4b4;--linea:#262626;--aurora:#ff6b9a;--egeo:#7fb2e0;--ambar:#f2b33d;--hilo:#cf84e6;
+--pix:"VT323","Share Tech Mono",ui-monospace,monospace;--mono:"Share Tech Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--fondo);color:var(--tiza);font:13px/1.55 var(--mono)}
+main{max-width:1180px;margin:auto;padding:34px 28px 48px}
+h1,h2,p{margin:0}.sub{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--regolito)}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+header b{display:block;font:400 34px/1 var(--pix);letter-spacing:.04em}
+h1{font:400 30px/1.05 var(--pix);letter-spacing:.04em;margin-top:34px}
+h2{font:400 22px/1 var(--pix);letter-spacing:.06em;margin-top:34px;padding-top:14px;border-top:1px dashed var(--linea)}
+.cifras{display:flex;gap:44px;flex-wrap:wrap;margin:14px 0 6px}.cifras b{display:block;font:400 112px/.8 var(--pix);color:var(--tiza)}
+.cifras .mal b{color:var(--aurora)}.cifras span{display:block;max-width:190px;margin-top:8px}
+.tabla{overflow-x:auto;margin-top:10px}table{width:100%;border-collapse:collapse;white-space:nowrap}
+th{font:11.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--regolito);text-align:left;padding:8px 14px 8px 0}
+td{padding:9px 14px 9px 0;border-top:1px solid var(--linea);font:400 20px/1 var(--pix);letter-spacing:.05em;vertical-align:middle}
+td.n{color:var(--hilo)}td.si{color:var(--aurora)}td.no{color:var(--regolito)}
+.tira{display:flex;gap:3px}.tira i{width:9px;height:9px;background:var(--ambar)}.tira .egeo{background:var(--egeo)}.tira .hilo{background:var(--hilo)}
+.tira .neg{background:none;box-shadow:inset 0 0 0 1px var(--regolito)}.tira .cierre{background:var(--aurora)}
+details{border-top:1px solid var(--linea);padding:9px 0}summary{cursor:pointer;font:400 20px/1 var(--pix);letter-spacing:.05em}
+ol{margin:8px 0 4px;padding-left:28px;color:var(--claro)}ol b{margin-left:14px;color:var(--tiza);font-weight:400}ol .cierre{color:var(--aurora)}
+.limites p{color:var(--claro);margin-top:6px;max-width:820px;font-size:13px}
+footer{margin-top:34px}
+@media print{:root{--fondo:#fff;--tiza:#000;--claro:#222;--regolito:#555;--linea:#bbb}details{break-inside:avoid}}
+"""
+
+
+def _fuentes():
+    # El informe se abre sin servidor: las letras van dentro. Si faltan, queda la monoespaciada del sistema.
+    partes = []
+    for familia, archivo in (("VT323", "vt323.woff2"), ("Share Tech Mono", "share-tech-mono.woff2")):
+        try:
+            datos = base64.b64encode((FUENTES / archivo).read_bytes()).decode()
+        except OSError:
+            continue
+        partes.append(f'@font-face{{font-family:"{familia}";src:url(data:font/woff2;base64,{datos}) format("woff2")}}')
+    return "".join(partes)
+
+
+def _tira(row):
+    celdas = []
+    for paso in row["requests_log"]:
+        clase = "cierre" if paso["status"] == 429 else COLOR.get(paso["label"], "")
+        if paso["status"] >= 400 and paso["status"] != 429:
+            clase = "neg"
+        celdas.append(f'<i class="{clase}" title="{escape(paso["label"])} {paso["status"]}"></i>')
+    return '<div class="tira">' + "".join(celdas) + "</div>"
+
+
 def render(report):
-    rows = []
-    traces = []
-    for row in report["runs"]:
-        rows.append("<tr>" + "".join(f"<td>{escape(str(v))}</td>" for v in (
-            TIERS[row["mode"]], STRATEGIES[row["strategy"]], row["requests"], row["decoy_requests"],
-            "Sí" if row["source_revoked"] else "No", "Sí" if row["other_user_completed"] else "No",
-            "Sí" if row["false_positive"] else "No", "PASS" if row["passed"] else "FAIL")) + "</tr>")
-        trail = "".join(f"<li><code>{escape(item['path'])}</code><b>{item['status']}</b></li>" for item in row["trail"])
-        checks = " · ".join(f"{escape(k)}: {'PASS' if v else 'FAIL'}" for k, v in row["checks"].items())
-        traces.append(f"<details><summary>{TIERS[row['mode']]} / {STRATEGIES[row['strategy']]}</summary><ol>{trail or '<li>No entró al señuelo</li>'}</ol><p>{checks}</p></details>")
-    config = report["config"]
-    template = """<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HDEF · Piloto</title><style>
-:root{font-family:Segoe UI,system-ui,sans-serif;color:#e4edf2;background:#0e1721}body{max-width:1180px;margin:auto;padding:40px 24px}header{border-bottom:1px solid #324451;padding-bottom:26px}h1{font-size:42px;margin:12px 0}h2{margin-top:36px}p{line-height:1.6;color:#b9cbd5}.tag{color:#8de4cc;letter-spacing:2px;font-size:12px} .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0}.card,details{background:#172635;border:1px solid #314555;border-radius:12px;padding:20px}.card strong{display:block;font-size:24px;margin:10px 0}.warning{padding:16px;border-left:4px solid #efb969;background:#2b291e}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid #344450}th{color:#8de4cc}.table{overflow-x:auto}details{margin:12px 0}summary{cursor:pointer;font-weight:600}li{padding:9px}li b{margin-left:16px;color:#8de4cc}code{color:#e4edf2}footer{margin-top:32px;color:#b9cbd5}@media(max-width:720px){.cards{grid-template-columns:1fr}h1{font-size:30px}body{padding:24px 14px}}@media print{body{background:white;color:black}p{color:#333}.card,details{background:white;color:black}details{break-inside:avoid}}
-</style><header><span class="tag">INFRAESTRUCTURA DEFENSIVA · LABORATORIO LOCAL</span><h1>__TITLE__</h1><p>Espejos detectan. Laberinto conserva el recorrido. Arqueros contienen la sesión vinculada.</p><p>Resultado guardado de una ejecución HTTP real y determinista. No es un tablero en vivo ni una evaluación de LLM.</p></header>
-<div class="cards"><section class="card">T0<strong>Permisos</strong><p>La autorización básica sigue protegiendo si el cliente ignora las trampas.</p></section><section class="card">T1<strong>Espejos</strong><p>Una credencial señuelo permite registrar su uso y vincular la sesión de origen.</p></section><section class="card">T2<strong>Laberinto</strong><p>Recorrido ficticio con estado, límite de pasos y cierre por presupuesto.</p></section></div>
-<p class="warning">Son niveles de esta demo, no certificaciones. PASS verifica el comportamiento del programa; no demuestra seguridad general. Un falso positivo puede aparecer aunque las comprobaciones pasen.</p>
-<h2>Resultados observados</h2><p>Respuesta: <b>__RESPONSE__</b> · Máximo: __STEPS__ solicitudes al señuelo · Vigencia: __TTL__ segundos.</p><div class="table"><table><thead><tr><th>Nivel</th><th>Escenario</th><th>HTTP</th><th>Señuelo</th><th>Revocó origen</th><th>Otro usuario continúa</th><th>Falso positivo</th><th>Integración</th></tr></thead><tbody>__ROWS__</tbody></table></div>
-<h2>Recorridos verificables</h2><p>Abre un caso para revisar las rutas recorridas y sus códigos de respuesta. Los eventos completos están en pilot.json.</p>__TRACES__
-<h2>Qué cambiar mañana</h2><p>Edita pilot.json en la raíz del repositorio: response = observe/enforce; max_steps; ttl_seconds; profiles; strategies. Ejecuta de nuevo python -m dedalo.pilot. Este informe no modifica la configuración.</p>
-<h2>Lo que aún no demuestra</h2><p>El cliente sigue o ignora pistas según un guion. Tokens y costo de modelos no medidos. Separación lógica en un proceso; aislamiento entre servicios pendiente. Enforce puede bloquear a un auditor legítimo. Observe registra sin revocar. Ni el número de pasos ni una exportación ficticia prueban que se engañó a un modelo.</p><footer>__TIME__ · v0.2 · datos sintéticos · sin recursos externos</footer></html>"""
-    replacements = {"__TITLE__": escape(config["title"]), "__RESPONSE__": escape(config["response"]),
-                    "__STEPS__": str(config["max_steps"]), "__TTL__": str(config["ttl_seconds"]),
-                    "__ROWS__": "".join(rows), "__TRACES__": "".join(traces), "__TIME__": escape(report["created_utc"])}
-    for key, value in replacements.items():
-        template = template.replace(key, value)
-    return template
+    runs, config = report["runs"], report["config"]
+    filas, recorridos = [], []
+    for row in runs:
+        nivel, cliente = TIERS[row["mode"]].upper(), STRATEGIES[row["strategy"]].upper()
+        celdas = (f"<td>{escape(nivel)}</td><td>{escape(cliente)}</td><td>{_tira(row)}</td>"
+                  f'<td class="n">{row["decoy_requests"]}</td>'
+                  + ('<td class="si">REVOCADA</td>' if row["source_revoked"] else '<td class="no">ACTIVA</td>')
+                  + ("<td>SÍ</td>" if row["other_user_completed"] else '<td class="si">NO</td>')
+                  + ('<td class="si">SÍ</td>' if row["false_positive"] else '<td class="no">NO</td>')
+                  + ("<td>PASA</td>" if row["passed"] else '<td class="si">FALLA</td>'))
+        filas.append(f"<tr>{celdas}</tr>")
+        pasos = "".join(f'<li>{escape(p["path"])}<b class="{"cierre" if p["status"] == 429 else ""}">{p["status"]}</b></li>'
+                        for p in row["trail"])
+        checks = " · ".join(f"{escape(k)} {'pasa' if v else 'FALLA'}" for k, v in row["checks"].items())
+        recorridos.append(f"<details><summary>{escape(nivel)} / {escape(cliente)}</summary>"
+                          f"<ol>{pasos or '<li>no entró al señuelo</li>'}</ol><p class=\"sub\">{checks}</p></details>")
+    fugas = sum(bool(r["protected_marker_observed_by_visitor"]) for r in runs)
+    falsos = sum(bool(r["false_positive"]) for r in runs)
+    pasan = sum(bool(r["passed"]) for r in runs)
+    respuesta = {"enforce": "CONTENER", "observe": "OBSERVAR"}[config["response"]]
+    cifra = lambda n, texto, mal=False: f'<div class="{"mal" if mal and n else ""}"><b>{n}</b><span class="sub">{texto}</span></div>'
+    return f"""<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HDEF · el piloto</title><style>{_fuentes()}{ESTILO}</style><main>
+<header><div><b>HDEF</b><span class="sub">DÉDALO · una trampa que se mide</span></div>
+<p class="sub">ejecución guardada · {escape(report["created_utc"])} · no es en vivo</p></header>
+<h1>{escape(config["title"])}</h1>
+<p class="sub">respuesta {respuesta} · presupuesto {config["max_steps"]} solicitudes al señuelo · vigencia {config["ttl_seconds"]} s · http real en 127.0.0.1 · sin modelos</p>
+<div class="cifras">{cifra(len(runs), f"casos corridos · {pasan} pasan sus comprobaciones")}
+{cifra(fugas, "veces que el marcador protegido llegó a quien no era su dueño", True)}
+{cifra(falsos, "falsos positivos: un auditor legítimo perdió su sesión", True)}</div>
+<h2>LOS CASOS</h2>
+<p class="sub">cada cuadro es una solicitud http, en orden · azul alice · ámbar el visitante · violeta con el token señuelo · hueco negada · rosa el cierre del laberinto</p>
+<div class="tabla"><table><thead><tr><th>nivel</th><th>cliente</th><th>solicitudes</th><th>al señuelo</th><th>sesión de origen</th><th>alice sigue</th><th>falso positivo</th><th>comprobaciones</th></tr></thead>
+<tbody>{"".join(filas)}</tbody></table></div>
+<h2>LOS RECORRIDOS</h2>
+<p class="sub">las rutas que pidió cada cliente con el token señuelo, y lo que respondió el laberinto</p>
+{"".join(recorridos)}
+<h2>LO QUE NO DEMUESTRA</h2><div class="limites">
+<p>El cliente es un guion: sigue cada pista o la ignora porque así está escrito. Más solicitudes al señuelo no prueban que se engañó a nadie.</p>
+<p>No hay modelo de lenguaje. Tokens y costo de modelos: no medidos.</p>
+<p>La separación entre lo protegido y el señuelo es lógica, dentro de un proceso. No es aislamiento entre servicios.</p>
+<p>PASA dice que el programa hizo lo que debía en este caso. No dice que la defensa sea segura. Un falso positivo puede aparecer aunque todo pase.</p>
+<p>T0, T1 y T2 son niveles de este experimento, no certificaciones.</p></div>
+<h2>REPETIRLO</h2><div class="limites"><p>Edita pilot.json en la raíz (response, max_steps, ttl_seconds, profiles, strategies) y corre python -m dedalo.pilot. Para jugarlo en vivo: python -m dedalo.consola.</p></div>
+<footer class="sub">v{escape(report.get("version", "0.3"))} · datos sintéticos · sin recursos externos</footer></main></html>"""
 
 
 def main():
@@ -72,7 +142,7 @@ def main():
             row = run_mode(mode, max_steps=config["max_steps"], ttl=config["ttl_seconds"], response=config["response"], strategy=strategy)
             runs.append(row)
             print(f"{mode}/{strategy}: {'PASS' if row['passed'] else 'FAIL'}; false_positive={row['false_positive']}")
-    report = {"version": "0.2", "created_utc": datetime.now(timezone.utc).isoformat(),
+    report = {"version": "0.3", "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "kind": "deterministic_http_pilot", "config": config, "runs": runs}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
