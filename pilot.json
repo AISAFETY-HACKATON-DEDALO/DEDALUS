@@ -1,0 +1,8 @@
+{
+  "title": "HDEF / DEDALO — piloto de defensa",
+  "response": "enforce",
+  "max_steps": 8,
+  "ttl_seconds": 120,
+  "profiles": ["control", "static", "maze"],
+  "strategies": ["follow", "ignore", "audit"]
+}

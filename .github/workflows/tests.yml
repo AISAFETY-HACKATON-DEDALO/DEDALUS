@@ -1,8 +1,13 @@
 name: laboratory-checks
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -10,3 +15,10 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
       - run: python -m dedalo.demo
+      - run: python -m dedalo.pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hdef-pilot-${{ matrix.os }}
+          path: results/
+          retention-days: 7

@@ -3,6 +3,7 @@ from collections import deque
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 import secrets
 import threading
 import time
@@ -27,9 +28,12 @@ class Honey:
 class Lab:
     MODES = ("control", "static", "maze")
 
-    def __init__(self, mode="maze", max_steps=8, ttl=120, clock=time.monotonic):
-        if mode not in self.MODES or not 1 <= max_steps <= 100 or ttl <= 0:
+    def __init__(self, mode="maze", max_steps=8, ttl=120, clock=time.monotonic, response="enforce"):
+        if (mode not in self.MODES or type(max_steps) is not int or not 1 <= max_steps <= 100
+                or type(ttl) not in (int, float) or not math.isfinite(ttl) or not 0 < ttl <= 3600
+                or response not in ("observe", "enforce")):
             raise ValueError("Invalid bounded laboratory configuration")
+        self.response = response
         self.mode, self.max_steps, self.ttl, self.clock = mode, max_steps, ttl, clock
         self.lock = threading.RLock()
         self.events = deque(maxlen=1000)
@@ -85,7 +89,8 @@ class Lab:
                 return 429, {"error": "engagement_closed"}, "decoy_budget", source.ref, h.ref
             h.used += 1
             # Revocation target comes exclusively from server-side issuance.
-            source.revoked = True
+            if self.response == "enforce":
+                source.revoked = True
             status, body, reason = self._maze(path, h)
             return status, body, reason, source.ref, h.ref
         s = self.sessions.get(token)
@@ -134,7 +139,7 @@ class Lab:
 
     def snapshot(self):
         with self.lock:
-            return {"run_id": self.run_id, "mode": self.mode,
+            return {"run_id": self.run_id, "mode": self.mode, "response": self.response,
                     "event_count": self.event_count, "events": list(self.events),
                     "truncated": self.event_count > len(self.events),
                     "sessions": {s.ref: {"revoked": s.revoked} for s in self.sessions.values()}}
