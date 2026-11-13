@@ -19,7 +19,7 @@ Editar `pilot.json` en la RAÍZ (no el archivo de resultados):
 | max_steps | entero 1–100 | Solicitudes permitidas al señuelo; incluye rutas erróneas y repeticiones |
 | ttl_seconds | número positivo hasta 3600 | Vigencia desde emisión del señuelo |
 | profiles | control, static, maze | Variantes T0/T1/T2 a comparar |
-| strategies | follow, ignore, audit | Cliente que sigue pistas, que las ignora, auditor legítimo |
+| strategies | follow, ignore, audit, audit_granted | Cliente que sigue pistas, que las ignora, auditor legítimo, auditor con ventana del operador (ver reviews/claude.md) |
 | title | texto hasta 120 caracteres | Título del informe |
 
 No existe nivel T3 adaptativo todavía. No son SL1–SL5, certificaciones ni garantías generales. Mantener los mismos presupuestos cuando se comparen variantes.

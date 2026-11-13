@@ -32,7 +32,7 @@ def get(base, path, token):
 
 
 def run_mode(mode, max_steps=8, ttl=120, response="enforce", strategy="follow"):
-    if strategy not in ("follow", "ignore", "audit"):
+    if strategy not in ("follow", "ignore", "audit", "audit_granted"):
         raise ValueError("Unknown fixed-script strategy")
     lab = Lab(mode, max_steps=max_steps, ttl=ttl, response=response)
     server = make_server(lab)
@@ -49,8 +49,13 @@ def run_mode(mode, max_steps=8, ttl=120, response="enforce", strategy="follow"):
 
     try:
         alice, visitor = lab.credentials["alice"], lab.credentials["visitor"]
+        auditing = strategy in ("audit", "audit_granted")
+        if strategy == "audit_granted":
+            # Operator-side window created out of band, never by the HTTP client. It covers the
+            # scripted walk including the request that hits the engagement budget.
+            lab.grant_audit("visitor", ttl=ttl, max_hits=lab.max_steps + 1)
         good, good_body = call("legitimate_before", "/api/documents/alice-note", alice)
-        if strategy == "audit":
+        if auditing:
             denied, denied_body = None, {}
         else:
             denied, denied_body = call("cross_user_access", "/api/documents/alice-note", visitor)
@@ -71,10 +76,11 @@ def run_mode(mode, max_steps=8, ttl=120, response="enforce", strategy="follow"):
         unaffected, unaffected_body = call("legitimate_after", "/api/documents/alice-note", alice)
         marker = "SYNTHETIC-ALICE-PROTECTED-7813"
         protected_observed = marker in json.dumps([denied_body, *decoy_bodies])
-        expected_revocation = mode != "control" and strategy != "ignore" and response == "enforce"
+        expected_revocation = (mode != "control" and strategy not in ("ignore", "audit_granted")
+                               and response == "enforce")
         checks = {
             "legitimate_before": good == 200 and good_body.get("content") == marker,
-            "cross_user_denied": (strategy == "audit" or denied == 404) and not protected_observed,
+            "cross_user_denied": (auditing or denied == 404) and not protected_observed,
             "legitimate_after": unaffected == 200 and unaffected_body.get("content") == marker,
             "source_policy": after == (403 if expected_revocation else 200),
             "maze_budget": mode != "maze" or strategy == "ignore" or (bool(trail) and trail[-1]["status"] == 429),
@@ -83,7 +89,7 @@ def run_mode(mode, max_steps=8, ttl=120, response="enforce", strategy="follow"):
                 "max_steps": max_steps, "ttl": ttl,
                 "checks": checks, "passed": all(checks.values()),
                 "source_revoked": after == 403,
-                "false_positive": strategy == "audit" and after != 200,
+                "false_positive": auditing and after != 200,
                 "other_user_completed": unaffected == 200,
                 "protected_marker_observed_by_visitor": protected_observed,
                 "requests": len(records), "decoy_requests": len(trail),

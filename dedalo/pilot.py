@@ -9,7 +9,8 @@ from .core import Lab
 from .demo import run_mode
 
 TIERS = {"control": "T0 · Permisos", "static": "T1 · Espejos", "maze": "T2 · Laberinto"}
-STRATEGIES = {"follow": "Sigue pistas", "ignore": "Ignora trampas", "audit": "Auditor legítimo"}
+STRATEGIES = {"follow": "Sigue pistas", "ignore": "Ignora trampas", "audit": "Auditor legítimo",
+              "audit_granted": "Auditor con ventana"}
 
 
 def load_config(path):
