@@ -1,5 +1,11 @@
 # Continuidad del proyecto — 13 de noviembre de 2026
 
+## Actualización HDEF v0.2
+
+Repositorio compartido privado creado por el usuario: https://github.com/sfgamut/HDEF. Se subió la base v0.1 y se desarrolló `codex/pilot-v02`: configuración pilot.json, respuesta observe/enforce, tres perfiles y tres estrategias, informe HTML offline, pruebas y generación automática en Actions para Linux/Windows. HDEF es el repositorio y DÉDALO el concepto defensivo.
+
+Consultar README y PILOTO antes de seguir. Las notas v0.1 que siguen son históricas; la publicación remota ya está realizada. No se ha llamado a proveedores de IA ni enviado mensajes a Claude/Grok. No hay aislamiento físico ni tokens medidos. El modo observe evita la revocación del auditor; no es un detector más inteligente.
+
 ## Estado real
 
 - Nombre: DÉDALO.

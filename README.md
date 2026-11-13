@@ -1,6 +1,16 @@
-# DÉDALO — laboratorio funcional v0.1
+# HDEF / DÉDALO — piloto configurable v0.2
 
-Estado al 13 de noviembre de 2026: prototipo Python con HTTP local, reglas deterministas, señuelo, laberinto y revocación. Doce pruebas automatizadas pasan; hay demo de integración de tres variantes. No hay agente LLM integrado ni evidencia de desgaste de tokens. El usuario cree haber sido aceptado; no se ha revisado confirmación.
+Estado al 13 de noviembre de 2026: piloto Python con HTTP local, perfiles T0/T1/T2, reglas deterministas, señuelo, laberinto y respuesta configurable. Suite de 18 pruebas y piloto de nueve casos. No hay agente LLM integrado ni evidencia de desgaste de tokens. Repositorio compartido: https://github.com/sfgamut/HDEF (privado).
+
+## Piloto para presentar
+
+```powershell
+python -m dedalo.pilot
+```
+
+Abrir `results/pilot/index.html` en el navegador. Es un informe visual de las ejecuciones realizadas, consultable sin conexión. La tabla incluye nueve casos y recorridos expandibles. Para repetir y modificar la demo, editar `pilot.json` en la raíz y volver a ejecutar. Guion y decisiones: [PILOTO.md](PILOTO.md).
+
+T0 = permisos básicos; T1 = señuelo estático; T2 = recorrido fijo acotado. Son perfiles del experimento, no niveles certificados. `response: observe` conserva la sesión y registra; `enforce` la revoca cuando se usa el señuelo. El perfil no afecta a los permisos por propietario.
 
 ## Ejecutar ahora
 
@@ -22,7 +32,7 @@ Exploración manual: `python -m dedalo.server --mode maze --port 8765`. El servi
 - Variantes: `control`, `static`, `maze`; mantienen la misma autorización básica.
 - Aislamiento lógico dentro de un proceso, NO servicios físicamente aislados ni defensa de producción. Falso positivo conocido: auditor legítimo que usa el token.
 - Pendientes: adaptador de modelo, selección adaptativa, tokens reales, aislamiento entre servicios y segunda aplicación.
-- Repositorio Git local creado. Publicación remota pendiente. Ver COLABORACION.md.
+- Base compartida subida a HDEF; piloto desarrollado en `codex/pilot-v02`. Ver COLABORACION.md. No se modificó la visibilidad privada.
 
 ## Propuesta en 30 segundos
 

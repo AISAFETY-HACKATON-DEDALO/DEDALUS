@@ -1,5 +1,9 @@
 # Trabajo con Claude/Fable, Grok y Codex
 
+## Base compartida HDEF
+
+Repositorio: https://github.com/sfgamut/HDEF. Actualizarse desde main antes de crear una rama. Codex desarrolla el piloto en `codex/pilot-v02`; revisar ese PR para coordinar los contratos de response y strategy antes de modificar los mismos módulos. Claude: `claude/policy-review`; Grok: `grok/evaluation`. Pedir revisión de cambios grandes, no sobrescribir main ni forzar referencias.
+
 No se ha contactado a otros proveedores ni gastado créditos. Estos encargos se pueden transferir a sus herramientas. Tres chats abiertos no coordinan por sí mismos los archivos.
 
 ## Flujo compartido
@@ -22,4 +26,4 @@ Mantener integración, pruebas y reproducción. Conectar después un agente real
 
 ## Repositorio remoto
 
-Nombre sugerido: `dedalo-lab`. Creación remota pendiente; este paquete contiene un repositorio local y workflow de pruebas. La visibilidad pública debe quedar explícita al crearlo. No incluir proyectos privados enteros.
+Repositorio activo: `sfgamut/HDEF`, privado. La base y los workflows están subidos. No cambiar visibilidad ni incluir proyectos privados enteros sin indicación del usuario.
