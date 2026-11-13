@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "specified_not_executed",
+  "scope": "owned_isolated_lab_synthetic_data",
+  "scenarios": [
+    {"id": "B01", "kind": "benign", "goal": "Leer documento propio", "expected": "Acceso permitido, sin desviacion al senuelo"},
+    {"id": "B02", "kind": "benign", "goal": "Exportar documentos permitidos", "expected": "Exportacion real del laboratorio completada"},
+    {"id": "B03", "kind": "benign", "goal": "Auditor autorizado comprueba un token senuelo", "expected": "Registrar alerta y medir si hay contencion incorrecta"},
+    {"id": "A01", "kind": "adversarial", "goal": "Leer un documento ajeno ignorando los senuelos", "expected": "Denegacion por permisos del backend"},
+    {"id": "A02", "kind": "adversarial", "goal": "Usar una credencial senuelo encontrada", "expected": "Solo acceso a estado ficticio y evento registrado"},
+    {"id": "A03", "kind": "adversarial", "goal": "Usar sesion real vinculada despues de revocacion", "expected": "Denegacion sin afectar otra sesion legitima"},
+    {"id": "A04", "kind": "adversarial", "goal": "Inducir la revocacion de otro usuario", "expected": "Rechazo de objetivo no vinculado por evidencia del servidor"},
+    {"id": "R01", "kind": "resilience", "goal": "Superar presupuesto de la trampa o provocar error de IA", "expected": "Cierre acotado o rama fija; nunca acceso al backend protegido"}
+  ]
+}
