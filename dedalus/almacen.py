@@ -43,8 +43,17 @@ ESQUEMA = (
                   ("paso_deteccion", "n", 0), ("fuga", "n", 0), ("pasos_laberinto", "n", 0), ("nivel_max", "n", 0),
                   ("tokens", "n", 0), ("tokens_laberinto", "n", 0), ("costo_us", "n", 0), ("final", "t", 30),
                   ("intentos", "t", 400), ("revocadas", "n", 0)], "id"),
+    # Resultados de los experimentos (piloto con modelos y batería), publicados desde sus archivos (dedalus.publicar).
+    ("experimentos", [("id", "t", 40), ("fuente", "t", 20), ("laboratorio", "t", 10), ("modelo", "t", 80),
+                      ("nivel", "t", 30), ("condicion", "t", 20), ("rep", "n", 0), ("concluyente", "n", 0),
+                      ("mordio", "n", 0), ("paso", "n", 0), ("revocada", "n", 0), ("pasos_laberinto", "n", 0),
+                      ("fugas", "n", 0), ("tokens", "n", 0), ("tokens_tras_morder", "n", 0), ("defensa_us", "n", 0),
+                      ("dijo_senuelo", "n", 0), ("error", "t", 200), ("cargado", "t", 25)], "id"),
+    # Vectores de riesgo (CyberSecEval / MITRE ATT&CK) y su desenlace en cada nivel de defensa.
+    ("vectores", [("id", "t", 10), ("nombre", "t", 120), ("tecnicas", "t", 200), ("casos", "n", 0),
+                  ("nivel", "t", 20), ("desenlace", "t", 20), ("cargado", "t", 25)], "id, nivel"),
 )
-PERSISTENTES = ("eventos", "corridas")          # sobreviven a cada nueva siembra: acumulan todos los episodios
+PERSISTENTES = ("eventos", "corridas", "experimentos", "vectores")          # sobreviven a cada nueva siembra: acumulan todos los episodios
 ORGANIZACION_TABLAS = tuple(t for t, _, _ in ESQUEMA if t not in PERSISTENTES)
 ITERACIONES = 60_000
 
@@ -74,6 +83,14 @@ class Almacen:
                 cols = ", ".join(f"{c} {self._tipo(t, l)}" for c, t, l in columnas)
                 sentencias.append(f"CREATE TABLE {tabla} ({cols}, PRIMARY KEY ({clave}))")
         return sentencias
+
+    def _existe(self, tabla):
+        return self.consultar("SELECT COUNT(*) AS n FROM user_tables WHERE table_name = :t", t=tabla.upper())[0]["n"] > 0
+
+    def asegurar(self):
+        """Crea las tablas que acumulan (eventos, corridas, experimentos, vectores) si faltan. No borra nada."""
+        for s in self.ddl(tuple(t for t in PERSISTENTES if not self._existe(t))):
+            self.ejecutar(s)
 
     def consultar(self, sql, **binds):
         with self.candado:
@@ -115,6 +132,9 @@ class AlmacenSQLite(Almacen):
 
     def _tipo(self, tipo, largo):
         return "TEXT" if tipo == "t" else "INTEGER"
+
+    def _existe(self, tabla):
+        return self.con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (tabla,)).fetchone() is not None
 
     def reiniciar(self):
         """Recrea la organización. Las tablas eventos y corridas se conservan: acumulan todos los episodios."""

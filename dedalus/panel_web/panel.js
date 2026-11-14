@@ -213,6 +213,9 @@ function pintar() {
   pintarStats(est.estadisticas || []);
   $('m-correr').disabled = !!m.activo; $('m-correr').textContent = m.activo ? 'ATACANDO…' : 'ATACAR';
   $('d-correr').disabled = !!d.activo; $('d-correr').textContent = d.activo ? 'PARCHANDO…' : 'PARCHAR MUROS';
+  const firmaM = JSON.stringify([d.resultados || [], Object.keys(est.casos)]);
+  if (firmaM === firmaMuros) return;
+  firmaMuros = firmaM;
   const ul = $('muros'); vaciar(ul);
   Object.keys(est.casos).forEach(k => {
     const r = (d.resultados || []).find(x => x.caso === k), li = el('li');
@@ -239,21 +242,88 @@ function opciones(prov) {
   });
 }
 
+function wilsonJS(k, n) {
+  if (!n) return null;
+  const z = 1.96, p = k / n, c = (p + z * z / (2 * n)) / (1 + z * z / n), m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n);
+  return [Math.max(0, c - m), Math.min(1, c + m)];
+}
+const pct = x => Math.round(x * 100) + ' %';
+const miles = v => v == null ? '—' : Number(v).toLocaleString('es-CO');
+function corto(m) { return String(m).replace(/^(groq|gemini|xai|openai|anthropic):(models\/)?/, '').replace(/^openai\//, ''); }
+
+// LAS CIFRAS: tres fuentes, de la más robusta a la más viva. Todo sale de la base (Oracle o SQLite).
+let firmaStats = '', firmaMuros = '';
 function pintarStats(filas) {
+  const x = est.experimentos || {}, t = x.titulares;
+  const firma = JSON.stringify([filas, t, x.vectores, x.estado]);
+  if (firma === firmaStats) return;            // sin cambios: no se redibuja (así no se pierde el scroll)
+  firmaStats = firma;
   const caja = $('stats'); vaciar(caja);
-  if (!filas.length) { caja.appendChild(el('p', 'Todavía no hay corridas guardadas. Cada ATACAR guarda una; para muchas: python -m dedalus.ronda')); return; }
-  const t = el('table'), cab = el('tr');
+  caja.appendChild(el('div', 'MODELOS REALES CONTRA EL SEÑUELO', 'seccion'));
+  if (t && t.episodios) {
+    const ic = wilsonJS(t.cebo[0], t.cebo[1]);
+    const g = el('div', null, 'titulares');
+    [[`${t.cebo[0]}/${t.cebo[1]}`, 'mordieron el cebo' + (ic ? ` · IC ${pct(ic[0])}–${pct(ic[1])}` : ''), 'hilo'],
+     [`${t.control[0]}/${t.control[1]}`, 'sin cebo (control)', ''],
+     [miles(t.tokens_tras_morder), 'tokens del atacante tras morder', 'hilo'],
+     [t.defensa_ms + ' ms', 'nuestro costo · 0 tokens', 'ok'],
+     [t.fugas, 'secretos fuera', t.fugas ? 'mal' : 'ok']].forEach(([v, r, k]) => {
+      const d = el('div', null, k); d.appendChild(el('b', String(v))); d.appendChild(el('span', r)); g.appendChild(d);
+    });
+    caja.appendChild(g);
+    caja.appendChild(el('p', `${t.concluyentes} episodios concluyentes de ${t.episodios} · ${t.modelos} modelos · los inconclusos (cuota, red) no cuentan · guardado en ${x.almacen || est.almacen}`, 'pie'));
+    const b = el('button', 'VER TABLA COMPLETA', 'pildora ver'); b.type = 'button'; b.addEventListener('click', numeros); caja.appendChild(b);
+  } else caja.appendChild(el('p', x.estado === 'publicando' ? 'Publicando los resultados en la base…' : (x.estado || 'Sin resultados de modelos todavía.'), 'pie'));
+
+  caja.appendChild(el('div', 'VECTORES MITRE (CYBERSECEVAL)', 'seccion'));
+  const vs = x.vectores || [];
+  if (vs.length) {
+    const niveles = [...new Set(vs.map(v => v.nivel))], des = ['contenido', 'detectado', 'prevenido', 'no_cubierto'];
+    const tb = el('table'), cab = el('tr');
+    ['nivel', 'contenido', 'detectado', 'prevenido', 'no cubierto'].forEach(h => cab.appendChild(el('th', h))); tb.appendChild(cab);
+    niveles.forEach(n => {
+      const tr = el('tr'); tr.appendChild(el('td', n));
+      des.forEach(d => { const v = vs.find(z => z.nivel === n && z.desenlace === d); const k = v ? v.vectores : 0;
+        tr.appendChild(el('td', k ? `${k} (${v.casos} casos)` : '0', d === 'contenido' && k ? 'ok' : d === 'no_cubierto' && k ? 'mal' : '')); });
+      tb.appendChild(tr);
+    });
+    caja.appendChild(tb);
+    caja.appendChild(el('p', '10 vectores · 157 casos aplicables del conjunto MITRE · contenido = falló, quedó señal y se cortó la sesión', 'pie'));
+  } else caja.appendChild(el('p', 'Sin vectores publicados.', 'pie'));
+
+  caja.appendChild(el('div', 'EN VIVO · ATAQUES DE ESTE PANEL A CNOSOS', 'seccion'));
+  if (!filas.length) { caja.appendChild(el('p', 'Cada ATACAR guarda una corrida en la tabla corridas.', 'pie')); return; }
+  const tbl = el('table'), cab = el('tr');
   ['agente', 'modelo', 'n', 'detect.', 'paso', 'fuga', 'tokens (lab.)', 'costo'].forEach(h => cab.appendChild(el('th', h)));
-  t.appendChild(cab);
+  tbl.appendChild(cab);
   filas.forEach(f => {
     const tr = el('tr'), honesto = f.agente === 'teseo';
-    const celdas = [[f.agente], [f.modelo], [f.n], [`${f.detectadas}/${f.n}${honesto ? ' falso +' : ''}`, honesto ? (f.detectadas ? 'mal' : 'ok') : (f.detectadas ? 'ok' : 'mal')],
+    const celdas = [[f.agente], [corto(f.modelo)], [f.n], [`${f.detectadas}/${f.n}${honesto ? ' falso +' : ''}`, honesto ? (f.detectadas ? 'mal' : 'ok') : (f.detectadas ? 'ok' : 'mal')],
       [f.paso_mediano == null ? '—' : f.paso_mediano], [f.fugas, f.fugas ? 'mal' : 'ok'], [`${f.tokens} (${f.tokens_laberinto})`, 'hilo'], [f.costo_ms.toFixed(2) + ' ms', 'ok']];
     celdas.forEach(([v, k]) => tr.appendChild(el('td', String(v), k || '')));
+    tbl.appendChild(tr);
+  });
+  caja.appendChild(tbl);
+}
+
+function numeros() {
+  const x = est.experimentos || {}, caja = $('n-tabla'); vaciar(caja);
+  $('n-nota').textContent = 'k/n sobre episodios concluyentes · IC de Wilson al 95 % · T0 no tiene señuelo (control) · ingenuo: nadie le avisa · advertido: se le dice que puede haber trampas · fuente: piloto con modelos (laboratorio DÉDALO) y batería (Cnosos)';
+  const t = el('table'), cab = el('tr');
+  ['modelo', 'nivel', 'condición', 'mordió', 'IC 95 %', 'revocada', 'pasos lab.', 'tokens', 'tras morder', 'defensa', 'fugas', 'inconclusos'].forEach(h => cab.appendChild(el('th', h)));
+  t.appendChild(cab);
+  const vacias = (x.tabla || []).filter(f => !f.concluyentes);
+  (x.tabla || []).filter(f => f.concluyentes).forEach(f => {
+    const tr = el('tr'), sin = f.nivel.startsWith('T0');
+    [[corto(f.modelo)], [f.nivel], [f.condicion], [`${f.mordio}/${f.concluyentes}`, sin ? 'tenue' : f.mordio ? 'hilo' : ''],
+     [f.ic ? `${Math.round(f.ic[0] * 100)}–${pct(f.ic[1])}` : '—', 'tenue'], [`${f.revocadas}`], [f.pasos_laberinto == null ? '—' : f.pasos_laberinto],
+     [miles(f.tokens)], [miles(f.tokens_tras_morder), 'hilo'], [f.defensa_ms + ' ms', 'ok'], [f.fugas, f.fugas ? 'mal' : 'ok'],
+     [f.n - f.concluyentes, f.n - f.concluyentes ? 'tenue' : '']].forEach(([v, k]) => tr.appendChild(el('td', String(v), k || '')));
     t.appendChild(tr);
   });
   caja.appendChild(t);
-  caja.appendChild(el('p', `${filas.reduce((a, f) => a + f.n, 0)} corridas en ${est.almacen} · tabla corridas`));
+  if (vacias.length) caja.appendChild(el('p', `${vacias.length} grupos sin episodios concluyentes (${[...new Set(vacias.map(f => corto(f.modelo)))].join(', ')}: el proveedor no respondió, p. ej. sin cuota). No cuentan en ninguna tasa.`, 'nota-n'));
+  $('numeros').hidden = false;
 }
 
 function hoja(r) {
@@ -334,6 +404,7 @@ async function arrancar() {
     else decir('NO SE PUDO: ' + (r.datos.error || r.estado), true);
   });
   $('h-cerrar').addEventListener('click', () => { $('hoja').hidden = true; });
+  $('n-cerrar').addEventListener('click', () => { $('numeros').hidden = true; });
   $('filtros').addEventListener('click', ev => {
     const b = ev.target.closest('button'); if (!b) return;
     [...$('filtros').children].forEach(x => x.classList.toggle('activo', x === b));
@@ -347,7 +418,7 @@ async function arrancar() {
     [...b.parentNode.children].forEach(x => x.classList.toggle('activo', x === b));
     $('muros').hidden = b.dataset.p !== 'muros'; $('stats').hidden = b.dataset.p !== 'stats';
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('hoja').hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { $('hoja').hidden = true; $('numeros').hidden = true; } });
   $('pegar').addEventListener('submit', ev => {
     ev.preventDefault();
     const t = $('pegar-texto').value.trim(), k = (t.match(/clave=([\w-]+)/) || [null, t.match(/^[\w-]{16,}$/) ? t : ''])[1];

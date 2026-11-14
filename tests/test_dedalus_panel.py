@@ -96,6 +96,14 @@ class PanelTests(unittest.TestCase):
         self.assertEqual([x["n"] for x in e["eventos_nuevos"]], list(range(301, 351)))
         self.assertEqual(e["pendientes"], 0)
 
+    def test_el_panel_publica_y_muestra_los_experimentos(self):
+        limite = time.time() + 20
+        while time.time() < limite and self.operar("/panel/estado")[1]["experimentos"]["estado"] == "publicando":
+            time.sleep(0.2)
+        x = self.operar("/panel/estado")[1]["experimentos"]
+        self.assertEqual(x["estado"], "listo")
+        self.assertEqual(x["titulares"]["fugas"], 0)
+
     def test_proveedores_dice_cuales_tienen_llave_sin_mostrarla(self):
         e = self.operar("/panel/estado")[1]
         self.assertEqual(set(e["proveedores"]), {"groq", "gemini", "grok", "openai"})

@@ -23,6 +23,7 @@ from .almacen import abrir
 from .casos import CASOS
 from .cnosos import INTENTOS, Cnosos
 from .defensor import GuionDefensor, defender
+from .publicar import publicar, resumen
 from .ronda import estadisticas, registrar
 
 RAIZ = Path(__file__).parent / "panel_web"
@@ -52,6 +53,21 @@ class Panel:
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
         self.estadisticas = self._estadisticas()
+        self.experimentos = {"titulares": None, "tabla": [], "vectores": [], "estado": "publicando"}
+        self._publicar()
+
+    def _publicar(self):
+        """Sube los resultados de los experimentos a la base y los resume. En segundo plano: Oracle puede tardar."""
+        almacen = self.cnosos.almacen
+
+        def correr():
+            try:
+                publicar(almacen, salida=lambda *_: None)
+                self.experimentos = {**resumen(almacen), "estado": "listo", "almacen": almacen.motor}
+            except Exception as e:      # noqa: BLE001 — sin números el panel sigue; el error se ve en la pestaña
+                self.experimentos = {"titulares": None, "tabla": [], "vectores": [],
+                                     "estado": f"error: {type(e).__name__}: {e}"[:200]}
+        threading.Thread(target=correr, daemon=True).start()
 
     def _estadisticas(self):
         try:
@@ -69,6 +85,7 @@ class Panel:
         tokens = getattr(self._modelo, "tokens", 0) if self._modelo else m.get("resumen", {}).get("tokens_atacante", 0)
         return {**foto, "eventos_nuevos": eventos, "pendientes": len(nuevos) - len(eventos), "tareas": self.tareas,
                 "tokens_atacante": tokens, "proveedores": disponibles(), "estadisticas": self.estadisticas,
+                "experimentos": self.experimentos,
                 "casos": {k: {"titulo": v["titulo"], "cwe": v["cwe"]} for k, v in CASOS.items()},
                 "cuenta_atacante": c.cuenta_de_prueba("tomas.mejia"), "nombres_intento": INTENTOS}
 
@@ -132,6 +149,7 @@ class Panel:
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
         self.estadisticas = self._estadisticas()
+        self._publicar()
         return {"ok": True, "episodio": self.cnosos.episodio}
 
 

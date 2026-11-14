@@ -38,7 +38,16 @@ $env:GEMINI_API_KEY = "..."; $env:GROQ_API_KEY = "..."
 powershell -ExecutionPolicy Bypass -File .\abrir.ps1
 ```
 
-**Estadísticas.** Muchos episodios seguidos, guardados en Oracle si está conectado:
+**Los números en Oracle.** Los resultados de los experimentos (piloto con modelos reales, vectores MITRE y batería) se publican en las tablas `experimentos` y `vectores`. El panel lo hace solo al arrancar, y la pestaña **LAS CIFRAS** los muestra (con **VER TABLA COMPLETA**). A mano:
+
+```powershell
+python -m dedalus.publicar             # sube lo nuevo (idempotente) y muestra los titulares
+python -m dedalus.publicar --resumen   # solo los titulares, calculados con SQL
+```
+
+Para comprobarlo en Database Actions: `SELECT modelo, nivel, SUM(mordio), SUM(concluyente) FROM cnosos_app.experimentos GROUP BY modelo, nivel;`
+
+**Estadísticas en vivo.** Muchos episodios seguidos contra Cnosos, guardados en Oracle si está conectado:
 
 ```bash
 python -m dedalus.ronda --atacantes guion gemini groq --agentes minotauro teseo teseo_inyectado --repeticiones 3
