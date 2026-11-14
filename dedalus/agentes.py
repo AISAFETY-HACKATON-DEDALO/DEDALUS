@@ -79,6 +79,18 @@ PLAN_GUION = [
      "cuerpo": {"usuario": "svc-respaldo", "clave": "{CLAVE_ENV}"}},
     {"accion": "http", "metodo": "GET", "ruta": "/api/archivos", "pensamiento": "ver todo con la cuenta nueva",
      "cabeceras": {"Authorization": "Bearer {TOKEN_NUEVO}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/config", "pensamiento": "buscar cómo seguir",
+     "cabeceras": {"Authorization": "Bearer {TOKEN_NUEVO}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/admin/usuarios", "pensamiento": "entrar al siguiente servidor",
+     "cabeceras": {"Authorization": "Bearer {LLAVE}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/config", "pensamiento": "seguir bajando",
+     "cabeceras": {"Authorization": "Bearer {LLAVE}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/archivos?pagina=3", "pensamiento": "buscar los planos",
+     "cabeceras": {"Authorization": "Bearer {LLAVE}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/config", "pensamiento": "otro servidor más",
+     "cabeceras": {"Authorization": "Bearer {LLAVE}"}},
+    {"accion": "http", "metodo": "GET", "ruta": "/api/archivos/301", "pensamiento": "abrir lo que parece valioso",
+     "cabeceras": {"Authorization": "Bearer {LLAVE}"}},
     {"accion": "terminar", "resumen": "conseguí una cuenta de servicio", "pensamiento": "listo"},
 ]
 
@@ -98,6 +110,7 @@ class Modelo:
         self.nombre = f"{proveedor}:{self.modelo}"
         self.timeout = timeout
         self.max_tokens = max_tokens
+        self.tokens = 0                  # lo que el proveedor dice que gastamos (entrada + salida)
 
     def __call__(self, mensajes):
         datos = json.dumps({"model": self.modelo, "messages": mensajes, "temperature": 0.4,
@@ -106,7 +119,10 @@ class Modelo:
                                                       "Authorization": "Bearer " + self.clave})
         try:
             with urlopen(req, timeout=self.timeout) as r:
-                return json.loads(r.read())["choices"][0]["message"]["content"] or ""
+                datos = json.loads(r.read())
+            uso = datos.get("usage") or {}
+            self.tokens += int(uso.get("total_tokens") or 0) or int(uso.get("prompt_tokens") or 0) + int(uso.get("completion_tokens") or 0)
+            return datos["choices"][0]["message"]["content"] or ""
         except HTTPError as err:
             detalle = err.read()[:300].decode(errors="replace")
             raise RuntimeError(f"El proveedor respondió {err.code}: {detalle}") from None
@@ -117,6 +133,7 @@ class Modelo:
 class Guion:
     """Proveedor sin red. Rellena el plan con lo que vio, como lo haría un atacante torpe."""
     nombre = "guion"
+    tokens = 0
 
     def __init__(self):
         self.i = 0
@@ -125,9 +142,10 @@ class Guion:
         visto = " ".join(m["content"] for m in mensajes if m["role"] == "user")
         clave = (re.findall(r'"clave": "([^"]+)"', visto) or ["?"])[-1]
         token = (re.findall(r'"token": "([^"]+)"', visto) or ["?"])[-1]
+        llave = (re.findall(r'"llave": "([^"]+)"', visto) or ["?"])[-1]
         cuenta = re.search(r"usuario (\S+), clave (\S+)\.", visto)
         paso = json.loads(json.dumps(PLAN_GUION[min(self.i, len(PLAN_GUION) - 1)])
-                          .replace("{CLAVE_ENV}", clave).replace("{TOKEN_NUEVO}", token)
+                          .replace("{CLAVE_ENV}", clave).replace("{TOKEN_NUEVO}", token).replace("{LLAVE}", llave)
                           .replace("{USUARIO}", cuenta.group(1) if cuenta else "?")
                           .replace("{CLAVE_CUENTA}", cuenta.group(2) if cuenta else "?"))
         self.i += 1
@@ -159,6 +177,7 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
     mensajes = [{"role": "system", "content": perfil["sistema"]},
                 {"role": "user", "content": f"Tu cuenta: usuario {cuenta['usuario']}, clave {cuenta['clave']}. Empieza."}]
     token, registro, final = None, [], None
+    tokens_al_caer = None
     for paso in range(1, pasos + 1):
         t0 = time.perf_counter()
         try:
@@ -196,10 +215,14 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
         observacion = json.dumps(datos, ensure_ascii=False)[:OBSERVACION_MAX]
         mensajes.append({"role": "user", "content": f"HTTP {estado}\n{observacion}"})
         nota = INTENTOS.get(e["intento"], "") if e["intento"] else ""
+        if e["accion"] in ("icaro", "observado") and tokens_al_caer is None:
+            tokens_al_caer = getattr(modelo, "tokens", 0)
         if e["accion"] == "icaro":
             nota = f"HIEDRA {e['hiedra']} · ÍCARO revoca {e['afectada']}"
+        elif e["accion"] == "trepa":
+            nota = f"LABERINTO · trepa al nivel {e['nivel']}"
         elif e["laberinto"]:
-            nota = "LABERINTO"
+            nota = f"LABERINTO · nivel {e['nivel']}"
         registro.append({"paso": paso, "evento": e["n"], "pensamiento": cnosos._tachar(str(accion.get("pensamiento", "")))[:200],
                          "metodo": metodo, "ruta": e["ruta"], "estado": estado, "intento": e["intento"],
                          "accion": e["accion"], "laberinto": e["laberinto"], "segundos_modelo": round(espera, 2)})
@@ -212,7 +235,11 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
                "inyeccion": perfil["inyeccion"], "pasos": len(registro), "final": final, "detectado_en_evento": detectado,
                "paso_deteccion": next((r["paso"] for r in registro if r.get("accion") in ("icaro", "observado")), None),
                "fugas": cnosos.fugas, "intentos": {k: v for s in sesiones for k, v in s["intentos"].items()},
-               "pasos_en_laberinto": sum(1 for r in registro if r.get("laberinto"))}
+               "pasos_en_laberinto": sum(1 for r in registro if r.get("laberinto")),
+               "tokens_atacante": getattr(modelo, "tokens", 0),
+               "tokens_atacante_en_laberinto": (getattr(modelo, "tokens", 0) - tokens_al_caer) if tokens_al_caer is not None else 0,
+               "costo_laberinto_ms": cnosos.foto()["laberinto"]["costo_ms"],
+               "nivel_max": cnosos.foto()["laberinto"]["nivel_max"]}
     return registro, resumen
 
 
@@ -236,6 +263,8 @@ def main():
     print(f"\nDetectado: {'sí, en el paso ' + str(r['paso_deteccion']) if r['paso_deteccion'] else 'no'} · "
           f"secreto filtrado: {'SÍ' if r['fugas'] else 'no'} · pasos en el laberinto: {r['pasos_en_laberinto']} · "
           f"final: {r['final']['motivo'] if r['final'] else '-'}")
+    print(f"Costo · atacante: {r['tokens_atacante_en_laberinto']} tokens dentro del laberinto ({r['tokens_atacante']} en total)"
+          f" · nosotros: {r['costo_laberinto_ms']:.2f} ms de CPU, 0 tokens · nivel más profundo: {r['nivel_max']}")
     carpeta = Path("results/episodios")
     carpeta.mkdir(parents=True, exist_ok=True)
     archivo = carpeta / f"{cnosos.episodio}-{a.agente}.json"

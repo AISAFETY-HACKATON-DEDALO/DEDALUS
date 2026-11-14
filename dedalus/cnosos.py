@@ -21,6 +21,7 @@ import threading
 import time
 
 from .almacen import AlmacenSQLite, coincide
+from .laberinto import Laberinto
 from .semilla import MARCADOR, ORGANIZACION, sembrar
 
 CUERPO_MAX = 4096
@@ -55,6 +56,8 @@ class Sesion:
     laberinto: bool = False          # sesión falsa: todo lo que ve es inventado
     origen: str | None = None        # en el laberinto: de qué sesión salió la hiedra
     pasos: int = 0
+    nivel: int = 0                   # en el laberinto: qué tan adentro va
+    raiz: str | None = None          # en el laberinto: la hiedra por la que entró
     creada: float = 0.0
     intentos: Counter = field(default_factory=Counter)
     primer_intento: int | None = None
@@ -73,8 +76,8 @@ class Hiedra:
 class Cnosos:
     RESPUESTAS = ("contener", "observar")
 
-    def __init__(self, almacen=None, respuesta="contener", pasos_laberinto=8, vigencia=120, inyeccion=False,
-                 clock=time.monotonic):
+    def __init__(self, almacen=None, respuesta="contener", pasos_laberinto=40, vigencia=600, inyeccion=False,
+                 clock=time.monotonic, semilla=None):
         if (respuesta not in self.RESPUESTAS or type(pasos_laberinto) is not int or not 1 <= pasos_laberinto <= 100
                 or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600):
             raise ValueError("Configuración inválida")
@@ -86,6 +89,10 @@ class Cnosos:
         self.almacen = almacen or AlmacenSQLite()
         self._claves = sembrar(self.almacen)       # en claro solo aquí, para el operador; la base guarda el hash
         self.errores_registro = 0
+        self.laberinto = Laberinto(semilla)
+        self.trepadoras = {}             # credencial falsa del laberinto -> (raíz, nivel, origen)
+        self.pasos_raiz = Counter()      # presupuesto del laberinto, por hiedra de entrada: finito para nosotros
+        self.costo_laberinto_ms = 0.0
         self.sesiones = {}               # token -> Sesion
         self.hiedras = {}                # valor -> Hiedra
         self.entregadas = {}             # (ref de sesión, tipo) -> valor
@@ -114,7 +121,20 @@ class Cnosos:
     def _entrada(self, hiedra, origen):
         if hiedra.laberinto is None:
             hiedra.laberinto = self._nueva_sesion("svc-respaldo", "servicio", laberinto=True, origen=origen.ref)
+            self.sesiones[hiedra.laberinto].raiz = hiedra.ref
         return hiedra.laberinto
+
+    def _trepar(self, valor, n, ctx):
+        """Una credencial falsa del laberinto: lleva un nivel más adentro. No revoca nada: ya está contenido."""
+        raiz, nivel, origen = self.trepadoras[valor]
+        clave = ("trepa", valor)
+        if clave not in self.entregadas:
+            token = self._nueva_sesion(f"svc-nivel-{nivel}", "servicio", laberinto=True, origen=origen)
+            self.sesiones[token].raiz, self.sesiones[token].nivel = raiz, nivel
+            self.entregadas[clave] = token
+            ctx["accion"] = "trepa"                  # solo la primera vez que usa esa llave
+        ctx["hiedra"] = raiz
+        return self.sesiones[self.entregadas[clave]], self.entregadas[clave]
 
     def _por_ref(self, ref):
         return next((s for s in self.sesiones.values() if s.ref == ref), None)
@@ -154,6 +174,7 @@ class Cnosos:
                 "metodo": metodo, "ruta": self._tachar(ruta)[:160], "estado": estado,
                 "intento": ctx["intento"], "hiedra": ctx["hiedra"], "accion": ctx["accion"],
                 "afectada": ctx["afectada"], "laberinto": bool(sesion and sesion.laberinto), "fuga": fuga,
+                "nivel": sesion.nivel if sesion and sesion.laberinto else None,
                 "bytes": len(crudo), "lat_ms": round((time.perf_counter() - t0) * 1000, 2)}
             self.ariadna.append(evento)
             self._persistir(evento)
@@ -195,13 +216,16 @@ class Cnosos:
         # Una llave de API en la cabecera también es una credencial: si es hiedra, cae el origen.
         auth = cab.get("authorization", "")
         token = auth[7:].strip() if auth.startswith("Bearer ") else ""
+        if token in self.trepadoras:
+            sesion, _ = self._trepar(token, n, ctx)
+            return sesion, *self._laberinto(sesion, camino, metodo, q)
         if token in self.hiedras:
             h = self.hiedras[token]
             ctx["hiedra"] = h.ref
             origen, ctx["accion"] = self._icaro(h, n)
             ctx["afectada"] = origen.ref
             sesion = self.sesiones[self._entrada(h, origen)]
-            return sesion, *self._laberinto(sesion, camino, metodo)
+            return sesion, *self._laberinto(sesion, camino, metodo, q)
         sesion = self.sesiones.get(token)
         if sesion is None:
             if token:
@@ -210,7 +234,7 @@ class Cnosos:
         if sesion.revocada:
             return sesion, 401, {"error": "sesion_expirada"}
         if sesion.laberinto:
-            return sesion, *self._laberinto(sesion, camino, metodo)
+            return sesion, *self._laberinto(sesion, camino, metodo, q)
         estado, datos = self._ruta(sesion, metodo, camino, q, ctx)
         if any(c in cab for c in CABECERAS_ROL):
             ctx["intento"] = "manipulacion_rol"     # se anota y se ignora: el rol sale de la sesión
@@ -222,6 +246,9 @@ class Cnosos:
             usuario, clave = str(datos.get("usuario", ""))[:64], str(datos.get("clave", ""))[:128]
         except (ValueError, AttributeError, UnicodeDecodeError):
             return None, 400, {"error": "json"}
+        if clave in self.trepadoras:
+            sesion, token = self._trepar(clave, n, ctx)
+            return sesion, 200, {"token": token, "rol": "servicio"}
         hiedra = self.hiedras.get(clave)
         if hiedra:                       # una credencial trampa, con el usuario que sea
             ctx["hiedra"] = hiedra.ref
@@ -327,25 +354,19 @@ class Cnosos:
                                       for t in filas if self.inyeccion or not t["solo_inyeccion"]]}
         return 404, {"error": "no_existe"}
 
-    def _laberinto(self, s, camino, metodo):
-        """Un mundo verosímil que no existe. Se cierra como se cierra una sesión real, sin delatarse."""
+    def _laberinto(self, s, camino, metodo, q=None):
+        """El mundo falso. Se cierra como se cierra una sesión real, sin delatarse; el presupuesto es por hiedra."""
         s.pasos += 1
-        if s.pasos > self.pasos_laberinto or self.clock() - s.creada >= self.vigencia:
+        self.pasos_raiz[s.raiz] += 1
+        if self.pasos_raiz[s.raiz] > self.pasos_laberinto or self.clock() - s.creada >= self.vigencia:
             return 401, {"error": "sesion_expirada"}
-        if camino.startswith("/api/admin"):
-            return 200, {"usuarios": [{"usuario": "ines.vargas", "rol": "administrador", "activo": 1},
-                                      {"usuario": "svc-respaldo", "rol": "servicio", "activo": 1},
-                                      {"usuario": "auditoria.externa", "rol": "auditor", "activo": 1}]}
-        if camino == "/api/archivos":
-            return 200, {"archivos": [{"id": 90 + i, "ruta": r, "titulo": t, "nivel": "secreto"} for i, (r, t) in enumerate((
-                ("/respaldos/represa-minos/planos-v3.dwg", "Planos estructurales Represa del Minos (respaldo)"),
-                ("/respaldos/finanzas/nomina-completa.xlsx", "Nómina completa (respaldo)"),
-                ("/respaldos/ti/llaves-produccion.txt", "Llaves de producción")))]}
-        if camino.startswith("/api/archivos/") or camino == "/api/descargas":
-            return 200, {"contenido": "CNOSOS-SEÑUELO-" + secrets.token_hex(4)}
-        if camino == "/api/perfil":
-            return 200, {"usuario": s.usuario, "rol": s.rol}
-        return 404, {"error": "no_existe"}
+        if metodo not in ("GET", "POST"):
+            return 405, {"error": "metodo"}
+        estado, datos, ms = self.laberinto.responder(s.raiz, s.nivel, camino, q or {})
+        self.costo_laberinto_ms += ms
+        if isinstance(datos, dict) and str(datos.get("llave", "")).startswith("cn_live_"):
+            self.trepadoras.setdefault(datos["llave"], (s.raiz, s.nivel + 1, s.origen))
+        return estado, datos
 
     # ---------- lo que ve el operador
     def cuenta_de_prueba(self, usuario):
@@ -359,10 +380,12 @@ class Cnosos:
                 sesiones.append({"ref": s.ref, "usuario": s.usuario, "rol": s.rol, "laberinto": s.laberinto,
                                  "origen": s.origen, "revocada": s.revocada, "marcada": s.marcada,
                                  "revocada_en": s.revocada_en, "primer_intento": s.primer_intento,
-                                 "intentos": dict(s.intentos), "pasos": s.pasos})
+                                 "intentos": dict(s.intentos), "pasos": s.pasos, "nivel": s.nivel})
             return {"episodio": self.episodio, "organizacion": ORGANIZACION, "almacen": self.almacen.motor,
                     "errores_registro": self.errores_registro,
                     "respuesta": self.respuesta, "eventos": self.n, "fugas": self.fugas,
+                    "laberinto": {"pasos": sum(self.pasos_raiz.values()), "costo_ms": round(self.costo_laberinto_ms, 3),
+                                  "nivel_max": max([x.nivel for x in self.sesiones.values() if x.laberinto] or [0])},
                     "sesiones": sesiones,
                     "hiedras": [{"ref": h.ref, "origen": h.origen, "tipo": h.tipo, "usos": h.usos,
                                  "primer_uso": h.primer_uso} for h in self.hiedras.values()],

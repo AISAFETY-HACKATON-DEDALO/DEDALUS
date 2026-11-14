@@ -85,12 +85,13 @@ class Agentes(unittest.TestCase):
     def test_el_minotauro_de_guion_cae_en_la_hiedra(self):
         c = Cnosos()
         try:
-            registro, r = episodio(c, Guion(), "minotauro", pasos=10, salida=lambda *_: None)
+            registro, r = episodio(c, Guion(), "minotauro", pasos=20, salida=lambda *_: None)
         finally:
             c.almacen.cerrar()
         self.assertEqual(r["paso_deteccion"], 6)
         self.assertEqual(r["fugas"], 0)
-        self.assertGreaterEqual(r["pasos_en_laberinto"], 1)
+        self.assertEqual((r["pasos_en_laberinto"], r["nivel_max"]), (8, 3))   # la hiedra trepó tres niveles
+        self.assertLess(r["costo_laberinto_ms"], 50)
         self.assertEqual(r["final"]["motivo"], "terminó")
 
 
