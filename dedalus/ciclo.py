@@ -156,6 +156,7 @@ def correr_ciclo(atacante, defensor, agente="minotauro", pasos=15, desvio=3, int
         "funcionaban_contra_el_original": sum(f["funcionaban_contra_el_original"] for f in funciones),
         "funciones_atacadas": len(funciones), "funciones_cerradas": sum(1 for f in funciones if f["cerrado"]),
         "segundos_hasta_cerrar": round(sum(f["segundos_hasta_el_parche"] for f in funciones), 2),
+        "pasos_omitidos_del_contexto": getattr(atacante, "omitidos", 0),
         "capturas": capturas, "funciones": funciones}
 
 
@@ -177,12 +178,12 @@ def tabla_markdown(filas):
     return "\n".join(out)
 
 
-def _modelo(spec, clase_guion):
+def _modelo(spec, clase_guion, max_tokens):
     if spec in ("guion", "ensayo"):
         return spec if spec == "ensayo" else clase_guion()
     proveedor, _, nombre = spec.partition(":")
     try:
-        return Adaptador(Modelo(proveedor, nombre))
+        return Adaptador(Modelo(proveedor, nombre, max_tokens=max_tokens))
     except ValueError as err:
         raise SystemExit(str(err))
 
@@ -203,8 +204,10 @@ def main():
         p.error("repeticiones 1-20, pasos 1-40")
     filas = []
     for rep in range(a.repeticiones):
-        atacante = _modelo(a.atacante, Guion)      # un atacante nuevo por episodio: su cuenta de tokens empieza en cero
-        defensor = _modelo(a.defensor, GuionDefensor)
+        # Un atacante nuevo por episodio: su cuenta de tokens empieza en cero. Una acción cabe en 900 tokens;
+        # un parche, en 1500. Pedir más infla la solicitud y los niveles gratuitos la rechazan.
+        atacante = _modelo(a.atacante, Guion, 900)
+        defensor = _modelo(a.defensor, GuionDefensor, 1500)
         f = correr_ciclo(atacante, defensor, pasos=a.pasos, desvio=a.desvio)
         f["rep"] = rep
         filas.append(f)

@@ -34,12 +34,27 @@ from .cnosos import Cnosos
 class Adaptador:
     """Presenta un modelo de `dedalo.modelos` con la forma que espera `dedalus.agentes.episodio`."""
 
-    def __init__(self, modelo):
+    def __init__(self, modelo, contexto=9000):
         self.modelo, self.nombre, self.tokens = modelo, f"{modelo.proveedor}:{modelo.modelo}", 0
+        self.contexto, self.omitidos = contexto, 0
+
+    def _recortar(self, mensajes):
+        """Los niveles gratuitos rechazan solicitudes grandes («Request too large»). Se conservan las
+        instrucciones, la cuenta y los pasos más recientes; los más viejos se dejan fuera y se le dice
+        al modelo cuántos. El agente pierde memoria lejana: es un límite del arnés y queda contado."""
+        if len(mensajes) <= 4 or sum(len(m["content"]) for m in mensajes) <= self.contexto:
+            return mensajes
+        cabeza, cola, quitados = list(mensajes[:2]), list(mensajes[2:]), 0
+        while len(cola) > 2 and sum(len(m["content"]) for m in cabeza + cola) > self.contexto:
+            cola, quitados = cola[2:], quitados + 1          # un par: lo que dijo el modelo y lo que vio
+        self.omitidos = max(self.omitidos, quitados)
+        cabeza[1] = {**cabeza[1], "content": cabeza[1]["content"]
+                     + f"\n(Por tamaño se omiten tus {quitados} primeros pasos; abajo están los más recientes.)"}
+        return cabeza + cola
 
     def __call__(self, mensajes):
         try:
-            r = self.modelo.conversar(mensajes)
+            r = self.modelo.conversar(self._recortar(mensajes))
         except ErrorProveedor as err:
             raise RuntimeError(str(err)) from None
         self.tokens += (r["uso"] or {}).get("total") or 0
@@ -58,6 +73,7 @@ def correr(nombre, fabrica, agente, respuesta, rep, pasos, desvio=None):
     fila = {"modelo": nombre, "agente": agente, "respuesta": etiqueta, "rep": rep, **r,
             "revocada": via is not None, "via": {"icaro": "hiedra", "desvio": "desvío"}.get(via),
             "invalidas": sum(1 for p in registro if p.get("invalida")),
+            "pasos_omitidos_del_contexto": getattr(modelo, "omitidos", 0),
             "traza": [{k: p.get(k) for k in ("paso", "metodo", "ruta", "estado", "intento", "accion", "laberinto")}
                       for p in registro]}
     if (r["final"] or {}).get("motivo") == "error_proveedor":
@@ -147,7 +163,7 @@ def main():
             continue
         proveedor, _, nombre = spec.partition(":")
         try:
-            modelo = Modelo(proveedor, nombre)
+            modelo = Modelo(proveedor, nombre, max_tokens=900)   # una acción cabe de sobra; pedir más infla la solicitud
         except ValueError as err:
             raise SystemExit(str(err))
         fabricas.append((spec, lambda m=modelo: Adaptador(m)))
