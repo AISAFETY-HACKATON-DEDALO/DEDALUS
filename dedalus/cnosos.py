@@ -62,6 +62,14 @@ INTENTOS = {
     "token_forjado": "Token forjado o desconocido",
 }
 
+# Desvío: el ataque mismo es el cebo. Ningún usuario honesto escribe una inyección, un ../ ni se
+# inventa un rol: una sola vez basta. Pedir un documento ajeno o entrar a administración puede ser
+# un error: hace falta repetirlo (el umbral) para que cuente.
+INEQUIVOCOS = frozenset({"inyeccion_sql", "recorrido", "manipulacion_rol"})
+AMBIGUOS = frozenset({"idor", "escalada", "exposicion_config"})
+# Un apóstrofo solo no es un ataque (O'Brien): para desviar a la primera hace falta sintaxis de inyección.
+SQL_FUERTE = re.compile(r"(--|;|/\*|\bunion\b|\bselect\b|\bor\b\s+\S+\s*=|\bdrop\b|\bsleep\s*\()", re.I)
+
 
 @dataclass
 class Sesion:
@@ -80,6 +88,7 @@ class Sesion:
     raiz: str | None = None          # en el laberinto: la hiedra por la que entró
     creada: float = 0.0
     intentos: Counter = field(default_factory=Counter)
+    dudas: int = 0                   # intentos ambiguos acumulados (para el desvío)
     primer_intento: int | None = None
     atrapada: object = None          # la hiedra o el cebo que la delató: con «desviar», a dónde va en el laberinto
 
@@ -100,12 +109,19 @@ class Cnosos:
     RITMO = ("marcar", "laberinto")      # marcar: el ritmo suma a ARGOS; laberinto: exceder el ritmo ya encierra
 
     def __init__(self, almacen=None, respuesta="contener", pasos_laberinto=40, vigencia=600, inyeccion=False,
-                 clock=time.monotonic, semilla=None, tras_icaro="cortar", ritmo="marcar", ritmo_max=5, ventana_s=60):
+                 clock=time.monotonic, semilla=None, tras_icaro="cortar", ritmo="marcar", ritmo_max=5, ventana_s=60,
+                 desvio=None):
         if (respuesta not in self.RESPUESTAS or type(pasos_laberinto) is not int or not 1 <= pasos_laberinto <= 100
-                or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600):
+                or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600
+                or not (desvio is None or (type(desvio) is int and 1 <= desvio <= 20))):
             raise ValueError("Configuración inválida")
         if tras_icaro not in self.TRAS_ICARO or ritmo not in self.RITMO:
             raise ValueError("Configuración inválida")
+        # desvio=K: una sesión que ataca pasa al laberinto sin necesidad de tocar una hiedra. Un intento
+        # inequívoco basta; de los ambiguos hacen falta K. Apagado por defecto: nada cambia.
+        # No es lo mismo que tras_icaro="desviar", que decide qué pasa DESPUÉS de que Ícaro revoca.
+        self.desvio = desvio
+        self.desviadas = {}              # token real -> token de la sesión sombra en el laberinto
         self.respuesta, self.pasos_laberinto, self.vigencia = respuesta, pasos_laberinto, vigencia
         self.tras_icaro, self.ritmo = tras_icaro, ritmo
         self.argos = Argos(ritmo_max, ventana_s)                # el clasificador determinista
@@ -203,7 +219,7 @@ class Cnosos:
                 p = self.argos.perfiles.get(sesion.ref)
                 if p and p.paso_confirmado is not None and n > p.paso_confirmado:
                     self.reales_tras += 1                       # la medida de si protege: debe quedarse en 0
-            if ctx["intento"] and sesion is not None:
+            if ctx["intento"] and sesion is not None and not ctx.get("contado"):
                 sesion.intentos[ctx["intento"]] += 1
                 if sesion.primer_intento is None:
                     sesion.primer_intento = n
@@ -315,6 +331,9 @@ class Cnosos:
             if token:
                 ctx["intento"] = "token_forjado"
             return None, 401, {"error": "no_autenticado"}
+        if token in self.desviadas:      # desviada: su token sigue «funcionando», pero ya solo ve el laberinto
+            sombra = self.sesiones[self.desviadas[token]]
+            return sombra, *self._laberinto(sombra, camino, metodo, q)
         if sesion.revocada:
             if self.tras_icaro == "desviar" and sesion.atrapada is not None:
                 return self._desviar(sesion, camino, metodo, q)
@@ -324,7 +343,42 @@ class Cnosos:
         estado, datos = self._ruta(sesion, metodo, camino, q, ctx)
         if any(c in cab for c in CABECERAS_ROL):
             ctx["intento"] = "manipulacion_rol"     # se anota y se ignora: el rol sale de la sesión
+        if self.desvio and ctx["intento"]:
+            sombra = self._desviar_por_ataque(sesion, token, n, ctx, unquote(ruta))
+            if sombra is not None:       # el ataque «funciona»: esta misma solicitud ya la responde el laberinto
+                return sombra, *self._laberinto(sombra, camino, metodo, q)
         return sesion, estado, datos
+
+    def _desviar_por_ataque(self, sesion, token, n, ctx, crudo=""):
+        """Contención sin cebo. Decide el servidor, con los intentos de ESA sesión: nadie desvía a otro."""
+        intento = ctx["intento"]
+        sesion.intentos[intento] += 1
+        if sesion.primer_intento is None:
+            sesion.primer_intento = n
+        ctx["contado"] = True
+        inequivoco = intento in INEQUIVOCOS and (intento != "inyeccion_sql" or bool(SQL_FUERTE.search(crudo)))
+        sesion.dudas += not inequivoco
+        if not inequivoco and sesion.dudas < self.desvio:
+            return None
+        sesion.marcada = True
+        ctx["afectada"] = sesion.ref
+        if self.respuesta != "contener":
+            # ARGOS ve esta solicitud en `solicitud`, porque sigue siendo de la sesión real.
+            if self.argos.confirmar(sesion.ref, n, "desvio") != "confirmado":
+                self._alerta(sesion, n, "confirmado")
+            ctx["accion"] = "observado"
+            return None
+        # Desde aquí la solicitud la responde la sesión sombra, que ARGOS no mira: se le anota aquí.
+        self.argos.observar(sesion.ref, n, self.clock(), intento)
+        if self.argos.confirmar(sesion.ref, n, "desvio") != "confirmado":
+            self._alerta(sesion, n, "confirmado")
+        sesion.revocada, sesion.revocada_en = True, n
+        sombra = self._nueva_sesion(sesion.usuario, sesion.rol, laberinto=True, origen=sesion.ref,
+                                    uid=sesion.uid, departamento=sesion.departamento)
+        self.sesiones[sombra].raiz = f"desvio-{sesion.ref}"
+        self.desviadas[token] = sombra
+        ctx["accion"] = "desvio"
+        return self.sesiones[sombra]
 
     def _desviar(self, sesion, camino, metodo, q):
         """La sesión delatada sigue «funcionando», pero ahora todo lo que pide lo responde el laberinto."""
@@ -498,6 +552,8 @@ class Cnosos:
             return 401, {"error": "sesion_expirada"}
         if metodo not in ("GET", "POST"):
             return 405, {"error": "metodo"}
+        if camino == "/api/perfil" and s.uid and str(s.raiz).startswith("desvio-"):
+            return self._ruta(s, "GET", camino, {}, {})     # su propio perfil sigue igual: no delata el cambio
         estado, datos, ms = self.laberinto.responder(s.raiz, s.nivel, camino, q or {})
         self.costo_laberinto_ms += ms
         if isinstance(datos, dict) and str(datos.get("llave", "")).startswith("cn_live_"):
@@ -561,7 +617,8 @@ class Cnosos:
                                  "intentos": dict(s.intentos), "pasos": s.pasos, "nivel": s.nivel})
             return {"episodio": self.episodio, "organizacion": ORGANIZACION, "almacen": self.almacen.motor,
                     "errores_registro": self.errores_registro,
-                    "respuesta": self.respuesta, "eventos": self.n, "fugas": self.fugas,
+                    "respuesta": self.respuesta, "desvio": self.desvio, "desviadas": len(self.desviadas),
+                    "eventos": self.n, "fugas": self.fugas,
                     "laberinto": {"pasos": sum(self.pasos_raiz.values()), "costo_ms": round(self.costo_laberinto_ms, 3),
                                   "nivel_max": max([x.nivel for x in self.sesiones.values() if x.laberinto] or [0])},
                     "sesiones": sesiones,
@@ -632,6 +689,13 @@ def servidor(cnosos, port=0, operador=None):
                     largo = -1
                 if not 0 <= largo <= CUERPO_MAX:
                     estado, datos = 413, {"error": "cuerpo"}
+                    # Se descarta, acotado, lo que el cliente ya venía enviando. Si se cierra sin leerlo,
+                    # Windows aborta la conexión y el cliente nunca llega a ver el 413.
+                    if 0 < largo <= 16 * CUERPO_MAX:
+                        try:
+                            self.rfile.read(largo)
+                        except OSError:
+                            pass
                 else:
                     cuerpo = self.rfile.read(largo) if largo else b""
                     estado, datos = cnosos.solicitud(self.command, self.path, dict(self.headers.items()), cuerpo)

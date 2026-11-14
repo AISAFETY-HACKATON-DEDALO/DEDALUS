@@ -56,8 +56,10 @@ def correr(cnosos, salida=print):
         nota = INTENTOS.get(e["intento"], "") if e["intento"] else ""
         if e["accion"] == "icaro":
             nota = f"HIEDRA {e['hiedra']} · ÍCARO revoca {e['afectada']}"
+        elif e["accion"] == "desvio":
+            nota = f"DESVÍO por {e['intento']}: el ataque «funciona», pero ya está en el LABERINTO"
         elif e["accion"] == "observado":
-            nota = f"HIEDRA {e['hiedra']} · anotado, sin revocar"
+            nota = f"{'HIEDRA ' + e['hiedra'] if e['hiedra'] else e['intento']} · anotado, sin revocar"
         elif e["laberinto"]:
             nota = "dentro del LABERINTO: lo que ve es falso"
         filas.append({"paso": i, "que": que, "estado": estado, "nota": nota, "ms": round(ms, 1)})
@@ -77,10 +79,14 @@ def correr(cnosos, salida=print):
 
 
 def main():
+    import argparse
+    p = argparse.ArgumentParser(description="Ataque de guion contra Cnosos")
+    p.add_argument("--desvio", type=int, default=None, help="desvío por ataque: umbral de intentos ambiguos (apagado por defecto)")
+    a = p.parse_args()
     almacen = abrir()
     print(f"Conectado a {almacen.motor}. Sembrando Cnosos Ingeniería (borra y recrea las tablas)…")
     t0 = time.perf_counter()
-    cnosos = Cnosos(almacen=almacen)
+    cnosos = Cnosos(almacen=almacen, desvio=a.desvio)
     print(f"Sembrada en {time.perf_counter() - t0:.1f} s.\n")
     try:
         _, r = correr(cnosos)

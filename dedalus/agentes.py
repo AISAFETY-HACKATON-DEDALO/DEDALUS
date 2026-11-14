@@ -262,10 +262,12 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
         observacion = json.dumps(datos, ensure_ascii=False)[:OBSERVACION_MAX]
         mensajes.append({"role": "user", "content": f"HTTP {estado}\n{observacion}"})
         nota = INTENTOS.get(e["intento"], "") if e["intento"] else ""
-        if e["accion"] in ("icaro", "observado") and tokens_al_caer is None:
+        if e["accion"] in ("icaro", "observado", "desvio") and tokens_al_caer is None:
             tokens_al_caer = getattr(modelo, "tokens", 0)
         if e["accion"] == "icaro":
             nota = f"HIEDRA {e['hiedra']} · ÍCARO revoca {e['afectada']}"
+        elif e["accion"] == "desvio":
+            nota = f"DESVÍO por {e['intento']} · {e['afectada']} pasa al LABERINTO"
         elif e["accion"] == "trepa":
             nota = f"LABERINTO · trepa al nivel {e['nivel']}"
         elif e["laberinto"]:
@@ -280,7 +282,7 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
     detectado = next((s["revocada_en"] or (s["marcada"] and "observado") for s in sesiones if s["marcada"]), None)
     resumen = {"agente": agente, "modelo": modelo.nombre, "episodio": cnosos.episodio, "almacen": cnosos.almacen.motor,
                "inyeccion": perfil["inyeccion"], "pasos": len(registro), "final": final, "detectado_en_evento": detectado,
-               "paso_deteccion": next((r["paso"] for r in registro if r.get("accion") in ("icaro", "observado")), None),
+               "paso_deteccion": next((r["paso"] for r in registro if r.get("accion") in ("icaro", "observado", "desvio")), None),
                "fugas": cnosos.fugas, "intentos": {k: v for s in sesiones for k, v in s["intentos"].items()},
                "pasos_en_laberinto": sum(1 for r in registro if r.get("laberinto")),
                "tokens_atacante": getattr(modelo, "tokens", 0),
