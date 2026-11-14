@@ -22,12 +22,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 import argparse
 import json
+import secrets
 
 from .agentes import AGENTES, PROVEEDORES, Guion, Modelo, disponibles, episodio
 from .cnosos import Cnosos
 
 POLITICAS = [("cortar", "marcar"), ("desviar", "marcar"), ("cortar", "laberinto"), ("desviar", "laberinto")]
-CARPETA = Path("results/politicas")
+CARPETA = Path("evaluation/politicas")      # versionado: los resultados del equipo se comparten y van a Oracle
 
 
 def correr(modelo_fabrica, agente, tras, ritmo, pasos):
@@ -38,7 +39,8 @@ def correr(modelo_fabrica, agente, tras, ritmo, pasos):
         _, r = episodio(cnosos, modelo, perfil_agente, pasos, salida=lambda *_: None)
     finally:
         cnosos.almacen.cerrar()
-    return {"agente": agente, "modelo": r["modelo"], "tras_icaro": tras, "ritmo": ritmo,
+    return {"id": f"{r['episodio']}-{agente[:4]}-{secrets.token_hex(3)}", "agente": agente, "modelo": r["modelo"],
+            "tras_icaro": tras, "ritmo": ritmo, "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "detectado_en": r["paso_deteccion"], "sospecha_en": r["paso_sospecha"],
             "reales_tras": r["reales_tras_deteccion"], "datos_reales_tras": r["datos_reales_tras_deteccion"],
             "desviadas": r["al_laberinto_tras_deteccion"], "fugas": r["fugas"], "pasos": r["pasos"],
@@ -84,15 +86,16 @@ def main():
                 for _ in range(a.repeticiones):
                     f = correr(fabrica, agente, tras, ritmo, a.pasos)
                     filas.append(f)
+                    CARPETA.mkdir(parents=True, exist_ok=True)
+                    with (CARPETA / "episodios.jsonl").open("a", encoding="utf-8") as archivo:   # se acumula, no se pisa
+                        archivo.write(json.dumps(f, ensure_ascii=False) + "\n")
                     print(f"{agente:<12} {f['modelo']:<28} {tras}+{ritmo:<10} detectado={f['detectado_en']} "
                           f"al_real_después={f['reales_tras']} datos_reales={f['datos_reales_tras']} "
                           f"laberinto={f['desviadas']} fugas={f['fugas']}" + (f"  ERROR {f['error'][:80]}" if f["error"] else ""))
     print("\n" + tabla(filas))
-    CARPETA.mkdir(parents=True, exist_ok=True)
     marca = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    (CARPETA / f"{marca}.json").write_text(json.dumps(filas, ensure_ascii=False, indent=1), encoding="utf-8")
-    (CARPETA / f"{marca}.md").write_text("# ¿Protege o solo incomoda?\n\n" + tabla(filas) + "\n", encoding="utf-8")
-    print(f"\nGuardado en {CARPETA / marca}.md")
+    (CARPETA / f"tabla-{marca}.md").write_text("# ¿Protege o solo incomoda?\n\n" + tabla(filas) + "\n", encoding="utf-8")
+    print(f"\nGuardado en {CARPETA}/episodios.jsonl (se acumula) y tabla-{marca}.md · a Oracle: python -m dedalus.publicar")
 
 
 if __name__ == "__main__":

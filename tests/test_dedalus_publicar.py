@@ -57,6 +57,18 @@ class PublicarTests(unittest.TestCase):
         self.assertEqual(r["titulares"]["fugas"], 0)
         self.assertTrue(r["vectores"])
 
+    def test_politicas_llegan_a_la_base_y_al_resumen(self):
+        ruta = Path(self.dir.name) / "politicas.jsonl"
+        filas = [{"id": f"e{i}", "agente": "persistente", "modelo": "guion", "tras_icaro": t, "ritmo": "marcar",
+                  "detectado_en": 6, "sospecha_en": 4, "reales_tras": r, "datos_reales_tras": d, "desviadas": l,
+                  "fugas": 0, "tokens": 0, "tokens_laberinto": 0, "error": None}
+                 for i, (t, r, d, l) in enumerate([("cortar", 5, 3, 0), ("desviar", 0, 0, 5)])]
+        ruta.write_text("\n".join(json.dumps(f) for f in filas), encoding="utf-8")
+        self.assertEqual(publicar(self.almacen, {"politicas": ruta}, salida=lambda *_: None)["politicas"], 2)
+        self.assertEqual(publicar(self.almacen, {"politicas": ruta}, salida=lambda *_: None)["politicas"], 0)
+        p = {f["politica"]: f for f in resumen(self.almacen)["proteccion"]}
+        self.assertEqual((p["cortar + marcar"]["reales_tras"], p["desviar + marcar"]["reales_tras"]), (5, 0))
+
     def test_sembrar_la_organizacion_no_borra_los_experimentos(self):
         publicar(self.almacen, self.fuentes, salida=lambda *_: None)
         self.almacen.reiniciar()
