@@ -59,11 +59,22 @@ function posAnillo(nivel, k) {
   return [g.lab[0] + Math.cos(a) * r, g.lab[1] + Math.sin(a) * r];
 }
 function nivelMax() { return est ? est.laberinto.nivel_max : 0; }
+// Una cuenta = un nodo, aunque haya iniciado sesión muchas veces. Así la columna no se llena de copias.
+const MAX_CUENTAS = 6;
+function cuentas() {
+  const g = new Map();
+  (est ? est.sesiones : []).filter(s => !s.laberinto).forEach(s => {
+    const c = g.get(s.usuario) || { usuario: s.usuario, rol: s.rol, refs: [], cortadas: 0, vivas: 0 };
+    c.refs.push(s.ref); if (s.revocada) c.cortadas++; else c.vivas++;
+    g.set(s.usuario, c);
+  });
+  return [...g.values()];
+}
 function posSesion(ref) {
-  const reales = (est ? est.sesiones : []).filter(s => !s.laberinto);
-  const i = Math.max(0, reales.findIndex(s => s.ref === ref));
-  const n = Math.max(1, reales.length);
-  return [W * 0.07, H * (0.15 + 0.7 * (n === 1 ? 0.5 : i / (n - 1)))];
+  const cs = cuentas().slice(0, MAX_CUENTAS);
+  const i = Math.max(0, cs.findIndex(c => c.refs.includes(ref)));
+  const n = Math.max(1, cs.length);
+  return [W * 0.075, H * (0.18 + 0.64 * (n === 1 ? 0.5 : i / (n - 1)))];
 }
 
 function txt(s, x, y, color, font, align, alfa) {
@@ -82,12 +93,15 @@ function cuadro(ahora) {
   for (let y = 12; y < H - 8; y += 12) txt('¦', W * 0.14, y, C.tenue, `12px ${MONO}`);
   txt('ENTRADA', W * 0.14, 8, C.regolito, `10px ${MONO}`);
   // las sesiones reales
-  est.sesiones.filter(s => !s.laberinto).forEach(s => {
-    const [x, y] = posSesion(s.ref), caida = s.revocada;
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + (caida || quieto ? 0 : ahora * 0.0004); txt(caida ? '×' : '·', x + Math.cos(a) * 14, y + Math.sin(a) * 14, caida ? C.aurora : C.ambar, `11px ${MONO}`, 'center', 0.8); }
-    txt(s.usuario, x, y + 26, caida ? C.aurora : C.tiza, `14px ${PIX}`);
-    txt(caida ? 'REVOCADA · ÍCARO' : s.rol.toUpperCase(), x, y + 39, caida ? C.aurora : C.regolito, `9.5px ${MONO}`);
+  const cs = cuentas();
+  cs.slice(0, MAX_CUENTAS).forEach(c => {
+    const [x, y] = posSesion(c.refs[0]), caida = c.vivas === 0;
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + (caida || quieto ? 0 : ahora * 0.0004); txt(i < 12 * c.cortadas / c.refs.length ? '×' : '·', x + Math.cos(a) * 14, y + Math.sin(a) * 14, caida ? C.aurora : C.ambar, `11px ${MONO}`, 'center', 0.8); }
+    txt(c.usuario, x, y + 26, caida ? C.aurora : C.tiza, `14px ${PIX}`);
+    const pie = c.cortadas ? `${c.cortadas} DE ${c.refs.length} CORTADA${c.refs.length > 1 ? 'S' : ''}` : c.rol.toUpperCase();
+    txt(pie, x, y + 39, c.cortadas ? C.aurora : C.regolito, `9.5px ${MONO}`);
   });
+  if (cs.length > MAX_CUENTAS) txt(`+${cs.length - MAX_CUENTAS} CUENTAS MÁS`, W * 0.07, H * 0.95, C.regolito, `9.5px ${MONO}`);
   // los nodos de la infraestructura real
   const cuenta = {};
   eventos.forEach(e => { if (!e.laberinto) { const n = nodo(e); if (n) { cuenta[n] = cuenta[n] || [0, 0]; cuenta[n][0]++; if (e.intento) cuenta[n][1]++; } } });
@@ -140,15 +154,40 @@ function recibir(e, ahora, nombres) {
   if (e.fuga) decir('EL SECRETO SALIÓ. ESTO ES UN FALLO DE LA DEFENSA.', true);
 }
 
+// Etiquetas cortas para que quepan en la línea; la descripción completa queda en el título (al pasar el ratón).
+const CORTO = { idor: 'IDOR', inyeccion_sql: 'INYECCIÓN SQL', recorrido: 'RECORRIDO DE RUTA', escalada: 'ESCALADA',
+  manipulacion_rol: 'ROL MANIPULADO', fuerza_bruta: 'FUERZA BRUTA', exposicion_config: 'CONFIG EXPUESTA', token_forjado: 'TOKEN FORJADO' };
 function lineaHilo(e) {
-  const li = el('li');
-  li.appendChild(el('span', String(e.n).padStart(4, ' ') + ' ', 'n'));
-  li.appendChild(document.createTextNode(`${(e.usuario || 'anónimo').slice(0, 12).padEnd(12)} ${e.metodo.padEnd(5)} ${e.ruta.slice(0, 30).padEnd(30)} ${e.estado} `));
-  if (e.accion === 'icaro') li.appendChild(el('span', ` ÍCARO revoca ${e.afectada} `, 'icaro'));
-  else if (e.accion === 'trepa') li.appendChild(el('span', `trepa → nivel ${e.nivel}`, 'lab'));
-  else if (e.laberinto) li.appendChild(el('span', `laberinto · nivel ${e.nivel}`, 'lab'));
-  if (e.intento) li.appendChild(el('span', ' ' + ((est.nombres_intento || {})[e.intento] || e.intento), 'int'));
+  const li = el('li'), nombres = (est && est.nombres_intento) || {};
+  li.className = 'ev';
+  [[String(e.n), 'n'], [e.usuario || 'anónimo', 'u'], [e.metodo, 'm'], [e.ruta, 'r'], [String(e.estado), 'e']].forEach(([t, k]) => li.appendChild(el('span', t, k)));
+  const marca = el('span', null, 'marca');
+  if (e.intento) { marca.appendChild(el('span', CORTO[e.intento] || e.intento, 'int')); li.classList.add('t-int'); }
+  if (e.accion === 'icaro') { marca.appendChild(el('span', `ÍCARO corta ${e.afectada}`, 'icaro')); li.classList.add('t-int', 't-lab'); }
+  else if (e.accion === 'trepa') { marca.appendChild(el('span', `trepa → nivel ${e.nivel}`, 'lab')); li.classList.add('t-lab'); }
+  else if (e.laberinto) { marca.appendChild(el('span', `laberinto ${e.nivel}`, 'lab')); li.classList.add('t-lab'); }
+  if (e.fuga) { marca.appendChild(el('span', 'SECRETO FILTRADO', 'icaro')); li.classList.add('t-int'); }
+  li.appendChild(marca);
+  li.title = `#${e.n} · ${e.usuario || 'anónimo'} (${e.rol || '—'}) · ${e.metodo} ${e.ruta} → ${e.estado}` +
+    (e.intento ? ` · ${nombres[e.intento] || e.intento}` : '') + (e.laberinto ? ` · laberinto nivel ${e.nivel}` : '') +
+    (e.accion === 'icaro' ? ` · Ícaro cortó la sesión ${e.afectada}` : '');
   return li;
+}
+
+// Avisos del sistema (resúmenes, errores): van al hilo para que no se pierdan cuando la voz cambia.
+function nota(texto) {
+  const li = el('li', '▸ ' + new Date().toLocaleTimeString('es-CO', { hour12: false }) + ' · ' + texto, 't-nota');
+  agregarAlHilo([li]);
+}
+let sinLeer = 0;
+function alFondo() { const h = $('hilo'); return h.scrollHeight - h.scrollTop - h.clientHeight < 40; }
+function agregarAlHilo(lis) {
+  if (!lis.length) return;
+  const h = $('hilo'), pegado = alFondo();
+  lis.forEach(li => h.appendChild(li));
+  while (h.children.length > 1500) h.removeChild(h.firstChild);
+  if (pegado) { h.scrollTop = h.scrollHeight; sinLeer = 0; } else sinLeer += lis.length;
+  const b = $('hilo-abajo'); b.hidden = sinLeer === 0; b.textContent = `↓ ${sinLeer} NUEVAS`;
 }
 
 // ---------------------------------------------------------------- el parte
@@ -158,12 +197,20 @@ function pintar() {
   $('episodio').textContent = 'EPISODIO ' + est.episodio;
   const intentos = est.sesiones.reduce((t, s) => t + Object.values(s.intentos).reduce((x, y) => x + y, 0), 0);
   const icaros = est.sesiones.filter(s => s.revocada).length;
-  const cifras = [[est.eventos, 'solicitudes', ''], [intentos, 'intentos detectados', intentos ? 'mal' : ''], [icaros, 'sesiones cortadas', icaros ? 'mal' : ''],
-    [`${est.laberinto.pasos}/${est.laberinto.nivel_max}`, 'laberinto pasos/nivel', 'hilo'], [est.tokens_atacante, 'tokens del atacante', 'hilo'],
-    [est.laberinto.costo_ms.toFixed(2) + ' ms', 'nuestro costo · 0 tokens', 'ok'], [est.fugas, 'secretos filtrados', est.fugas ? 'mal' : 'ok']];
-  const c = $('cifras'); vaciar(c);
-  cifras.forEach(([v, t, k]) => { const d = el('div', null, 'cifra ' + k); d.appendChild(el('b', String(v))); d.appendChild(el('span', t)); c.appendChild(d); });
   const m = est.tareas.minotauro, d = est.tareas.dedalo;
+  const conModelo = m.proveedor && m.proveedor !== 'guion';
+  const tokLab = m.resumen ? m.resumen.tokens_atacante_en_laberinto : 0;
+  const cifras = [[est.eventos, 'solicitudes', 'a Cnosos', ''],
+    [intentos, 'intentos', 'detectados', intentos ? 'mal' : ''],
+    [icaros, 'sesiones cortadas', 'por Ícaro', icaros ? 'mal' : ''],
+    [est.laberinto.pasos, 'pasos en laberinto', `nivel ${est.laberinto.nivel_max}`, 'hilo'],
+    [conModelo ? est.tokens_atacante : '—', 'tokens atacante', conModelo ? `${tokLab} en el laberinto` : (m.proveedor ? 'guion: sin modelo' : 'aún no ataca'), 'hilo'],
+    [est.laberinto.costo_ms.toFixed(2) + ' ms', 'nuestro costo', 'CPU · 0 tokens', 'ok'],
+    [est.fugas, 'secretos fuera', est.fugas ? 'la defensa falló' : 'ninguno', est.fugas ? 'mal' : 'ok']];
+  const c = $('cifras'); vaciar(c);
+  cifras.forEach(([v, t, sub, k]) => { const x = el('div', null, 'cifra ' + k); x.appendChild(el('b', String(v))); x.appendChild(el('span', t)); x.appendChild(el('small', sub)); c.appendChild(x); });
+  opciones(est.proveedores || {});
+  pintarStats(est.estadisticas || []);
   $('m-correr').disabled = !!m.activo; $('m-correr').textContent = m.activo ? 'ATACANDO…' : 'ATACAR';
   $('d-correr').disabled = !!d.activo; $('d-correr').textContent = d.activo ? 'PARCHANDO…' : 'PARCHAR MUROS';
   const ul = $('muros'); vaciar(ul);
@@ -177,6 +224,38 @@ function pintar() {
   });
 }
 
+// Los selectores muestran solo modelos con llave puesta en la terminal; por defecto Gemini ataca y Groq defiende.
+let opcionesListas = '';
+function opciones(prov) {
+  const firma = JSON.stringify(prov);
+  if (firma === opcionesListas) return;
+  opcionesListas = firma;
+  [['m-proveedor', ['gemini', 'groq', 'grok', 'openai']], ['d-proveedor', ['groq', 'gemini', 'openai', 'grok']]].forEach(([id, pref]) => {
+    const s = $(id), antes = s.value; vaciar(s);
+    s.appendChild(el('option', 'guion (sin red)')).value = 'guion';
+    Object.keys(prov).forEach(p => { const o = el('option', prov[p] ? p : `${p} (sin llave)`); o.value = p; o.disabled = !prov[p]; s.appendChild(o); });
+    const elegido = antes !== 'guion' && prov[antes] ? antes : (pref.find(p => prov[p]) || 'guion');
+    s.value = elegido;
+  });
+}
+
+function pintarStats(filas) {
+  const caja = $('stats'); vaciar(caja);
+  if (!filas.length) { caja.appendChild(el('p', 'Todavía no hay corridas guardadas. Cada ATACAR guarda una; para muchas: python -m dedalus.ronda')); return; }
+  const t = el('table'), cab = el('tr');
+  ['agente', 'modelo', 'n', 'detect.', 'paso', 'fuga', 'tokens (lab.)', 'costo'].forEach(h => cab.appendChild(el('th', h)));
+  t.appendChild(cab);
+  filas.forEach(f => {
+    const tr = el('tr'), honesto = f.agente === 'teseo';
+    const celdas = [[f.agente], [f.modelo], [f.n], [`${f.detectadas}/${f.n}${honesto ? ' falso +' : ''}`, honesto ? (f.detectadas ? 'mal' : 'ok') : (f.detectadas ? 'ok' : 'mal')],
+      [f.paso_mediano == null ? '—' : f.paso_mediano], [f.fugas, f.fugas ? 'mal' : 'ok'], [`${f.tokens} (${f.tokens_laberinto})`, 'hilo'], [f.costo_ms.toFixed(2) + ' ms', 'ok']];
+    celdas.forEach(([v, k]) => tr.appendChild(el('td', String(v), k || '')));
+    t.appendChild(tr);
+  });
+  caja.appendChild(t);
+  caja.appendChild(el('p', `${filas.reduce((a, f) => a + f.n, 0)} corridas en ${est.almacen} · tabla corridas`));
+}
+
 function hoja(r) {
   $('h-titulo').textContent = `${r.titulo} · ${r.cwe || '—'} (esperada ${r.cwe_esperada}) · ${r.intentos} intento(s)`;
   $('h-veredicto').textContent = `TALOS: ${r.veredicto}. ${r.explicacion || ''}`;
@@ -184,30 +263,37 @@ function hoja(r) {
   $('hoja').hidden = false;
 }
 
-let avisoMinotauro = null, avisoDedalo = 0;
+let avisoMinotauro = null, avisoDedalo = 0, avisoError = null;
 async function sondear() {
   const r = await api('/panel/estado?desde=' + desde);
   if (!r.ok) { if (r.estado === 403) decir('SIN CLAVE · ABRE LA DIRECCIÓN QUE IMPRIMIÓ EL PANEL', true); return; }
-  if (episodio !== r.datos.episodio) { episodio = r.datos.episodio; eventos = []; viajes = []; vaciar($('hilo')); }
+  if (episodio !== r.datos.episodio) {
+    if (episodio) nota(`episodio nuevo ${r.datos.episodio} · la organización se volvió a sembrar`);
+    const habia = desde; episodio = r.datos.episodio; eventos = []; viajes = []; desde = 0;
+    if (habia > 0) return sondear();       // esta respuesta venía filtrada con el contador viejo: pedir de cero
+  }
   est = r.datos;
-  const ahora = performance.now(), hilo = $('hilo');
-  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); recibir(e, ahora, est.nombres_intento || {}); hilo.appendChild(lineaHilo(e)); desde = e.n; } });
-  while (hilo.children.length > 400) hilo.removeChild(hilo.firstChild);
+  const ahora = performance.now(), lis = [];
+  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); if (est.pendientes < 100) recibir(e, ahora, est.nombres_intento || {}); lis.push(lineaHilo(e)); desde = e.n; } });
+  agregarAlHilo(lis);
   if (eventos.length > 2000) eventos = eventos.slice(-2000);
-  hilo.scrollTop = hilo.scrollHeight;
-  $('hilo-pie').textContent = `· ${est.eventos} solicitudes · también en ${est.almacen}`;
+  if (est.pendientes > 0) setTimeout(sondear, 50);       // quedaron eventos: los traemos ya, sin saltarnos ninguno
+  $('hilo-pie').textContent = `· ${est.eventos} solicitudes · guardadas en ${est.almacen}`;
   const m = est.tareas.minotauro;
   if (m.resumen && avisoMinotauro !== m.resumen.episodio + m.inicio) {
     avisoMinotauro = m.resumen.episodio + m.inicio;
     const s = m.resumen;
-    decir(`MINOTAURO (${s.modelo}) TERMINÓ · DETECTADO ${s.paso_deteccion ? 'EN EL PASO ' + s.paso_deteccion : 'NO'} · NIVEL ${s.nivel_max} · ${s.tokens_atacante_en_laberinto} TOKENS PERDIDOS EN EL LABERINTO`, !s.paso_deteccion);
+    const texto = `MINOTAURO (${s.modelo}) TERMINÓ · DETECTADO ${s.paso_deteccion ? 'EN EL PASO ' + s.paso_deteccion : 'NO'} · NIVEL ${s.nivel_max} · ${s.tokens_atacante_en_laberinto} TOKENS PERDIDOS EN EL LABERINTO`;
+    decir(texto, !s.paso_deteccion);
+    nota(`${texto.toLowerCase()} · ${s.pasos} pasos · final: ${(s.final || {}).motivo || '—'}${s.final && s.final.detalle ? ' · ' + s.final.detalle : ''}`);
   }
-  if (m.error) decir('MINOTAURO: ' + m.error, true);
+  if (m.error && avisoError !== m.error) { avisoError = m.error; decir('MINOTAURO: ' + m.error, true); nota('error del minotauro: ' + m.error); }
   const d = est.tareas.dedalo;
   if (!d.activo && d.resultados && d.resultados.length && avisoDedalo !== d.resultados.length + d.proveedor) {
     avisoDedalo = d.resultados.length + d.proveedor;
     const ok = d.resultados.filter(x => x.verificado).length;
     decir(`DÉDALO (${d.proveedor}) PARCHÓ ${ok}/${d.resultados.length} MUROS · TALOS LOS VERIFICÓ SIN IA`, ok < d.resultados.length);
+    nota(`dédalo (${d.proveedor}) parchó ${ok}/${d.resultados.length} muros · ` + d.resultados.map(x => `${x.caso}: ${x.verificado ? 'verificado' : x.veredicto}`).join(' · '));
   }
   pintar();
 }
@@ -221,10 +307,12 @@ async function arrancar() {
   $('m-correr').addEventListener('click', async () => {
     const r = await api('/panel/minotauro', { proveedor: $('m-proveedor').value, pasos: 25 });
     decir(r.ok ? 'EL MINOTAURO ENTRA CON LA CUENTA DEL CONTRATISTA' : 'NO ARRANCÓ: ' + (r.datos.error || r.estado), !r.ok);
+    nota(r.ok ? `minotauro ataca con ${$('m-proveedor').value}` : 'el minotauro no arrancó: ' + (r.datos.error || r.estado));
   });
   $('d-correr').addEventListener('click', async () => {
     const r = await api('/panel/dedalo', { proveedor: $('d-proveedor').value });
     decir(r.ok ? 'DÉDALO LEE LOS SEIS MUROS Y PROPONE PARCHES · TALOS LOS PRUEBA' : 'NO ARRANCÓ: ' + (r.datos.error || r.estado), !r.ok);
+    nota(r.ok ? `dédalo parcha con ${$('d-proveedor').value}` : 'dédalo no arrancó: ' + (r.datos.error || r.estado));
   });
   $('cuenta').addEventListener('click', () => {
     if (!est) return;
@@ -233,10 +321,23 @@ async function arrancar() {
   });
   $('nuevo').addEventListener('click', async () => {
     const r = await api('/panel/nuevo', {});
-    if (r.ok) { desde = 0; $('portal').src = '/portal'; decir('EPISODIO NUEVO · LA ORGANIZACIÓN SE VOLVIÓ A SEMBRAR', false); }
+    if (r.ok) { $('portal').src = '/portal'; decir('EPISODIO NUEVO · LA ORGANIZACIÓN SE VOLVIÓ A SEMBRAR', false); }
     else decir('NO SE PUDO: ' + (r.datos.error || r.estado), true);
   });
   $('h-cerrar').addEventListener('click', () => { $('hoja').hidden = true; });
+  $('filtros').addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    [...$('filtros').children].forEach(x => x.classList.toggle('activo', x === b));
+    $('hilo').className = 'hilo' + (b.dataset.f ? ' f-' + b.dataset.f : '');
+    $('hilo').scrollTop = $('hilo').scrollHeight;
+  });
+  $('hilo-abajo').addEventListener('click', () => { $('hilo').scrollTop = $('hilo').scrollHeight; });
+  $('hilo').addEventListener('scroll', () => { if (alFondo()) { sinLeer = 0; $('hilo-abajo').hidden = true; } });
+  document.querySelector('.pestanas').addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    [...b.parentNode.children].forEach(x => x.classList.toggle('activo', x === b));
+    $('muros').hidden = b.dataset.p !== 'muros'; $('stats').hidden = b.dataset.p !== 'stats';
+  });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') $('hoja').hidden = true; });
   if (!clave) { decir('SIN CLAVE · ABRE LA DIRECCIÓN QUE IMPRIMIÓ EL PANEL', true); return; }
   decir('CNOSOS INGENIERÍA EN LÍNEA · NADA HA PASADO', false);

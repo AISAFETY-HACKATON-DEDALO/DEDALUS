@@ -22,7 +22,28 @@ chmod +x abrir.sh && ./abrir.sh
 El script pide la clave sin mostrarla y abre el navegador. Arriba a la derecha dice **ALMACÉN ORACLE** si conectó. Si das Enter sin clave, o si Oracle no responde, arranca igual con **ALMACÉN SQLITE**: la demo nunca depende del wifi.
 
 - **Izquierda:** el portal de Cnosos Ingeniería, una empresa falsa con login, archivos y permisos. Se ataca desde el navegador o desde la consola de abajo.
-- **Derecha:** nodos, laberinto, registro y costos. **MINOTAURO** ataca (guion fijo, o Groq/Gemini si hay `GROQ_API_KEY` o `GEMINI_API_KEY`); **DÉDALO** propone parches y **TALOS** los verifica sin IA.
+- **Derecha:** nodos, laberinto, el hilo (cada solicitud, con filtros) y las cifras. **MINOTAURO** ataca, **DÉDALO** propone parches y **TALOS** los verifica sin IA. Cada ataque queda guardado como una fila de `corridas`; la pestaña LAS CIFRAS las resume.
+
+**Modelos.** Se pone la llave en la misma ventana *antes* de abrir el script, y el panel solo ofrece los que tienen llave (por defecto Gemini ataca y Groq defiende):
+
+| Proveedor | Variable | Dónde se saca |
+|---|---|---|
+| gemini | `GEMINI_API_KEY` | aistudio.google.com · gratis |
+| groq | `GROQ_API_KEY` | console.groq.com · gratis |
+| grok | `XAI_API_KEY` | console.x.ai · de pago (la suscripción de Grok no sirve) |
+| openai | `OPENAI_API_KEY` | platform.openai.com · de pago (ChatGPT Plus no sirve) |
+
+```powershell
+$env:GEMINI_API_KEY = "..."; $env:GROQ_API_KEY = "..."
+powershell -ExecutionPolicy Bypass -File .\abrir.ps1
+```
+
+**Estadísticas.** Muchos episodios seguidos, guardados en Oracle si está conectado:
+
+```bash
+python -m dedalus.ronda --atacantes guion gemini groq --agentes minotauro teseo teseo_inyectado --repeticiones 3
+python -m dedalus.ronda --informe        # todo lo guardado, calculado con SQL en la base
+```
 
 Otros comandos:
 

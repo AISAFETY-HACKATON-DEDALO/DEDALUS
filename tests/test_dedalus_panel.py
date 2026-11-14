@@ -77,10 +77,29 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(e["tareas"]["minotauro"]["resumen"]["paso_deteccion"], 6)
         self.assertEqual(sum(1 for r in e["tareas"]["dedalo"]["resultados"] if r["verificado"]), 6)
         self.assertEqual(e["fugas"], 0)
+        # el ataque quedó como corrida, y el panel lo muestra en sus estadísticas
+        self.assertEqual([(f["agente"], f["modelo"], f["n"], f["detectadas"]) for f in e["estadisticas"]],
+                         [("minotauro", "guion", 1, 1)])
         anterior = e["episodio"]
         estado, r = self.operar("/panel/nuevo", {})
         self.assertEqual(estado, 200)
         self.assertNotEqual(r["episodio"], anterior)
+
+    def test_el_hilo_no_se_salta_eventos(self):
+        c = self.panel.cnosos
+        for _ in range(350):
+            c.solicitud("GET", "/api/perfil", {}, b"")
+        e = self.operar("/panel/estado?desde=0")[1]
+        self.assertEqual([x["n"] for x in e["eventos_nuevos"]], list(range(1, 301)))
+        self.assertEqual(e["pendientes"], 50)
+        e = self.operar("/panel/estado?desde=300")[1]
+        self.assertEqual([x["n"] for x in e["eventos_nuevos"]], list(range(301, 351)))
+        self.assertEqual(e["pendientes"], 0)
+
+    def test_proveedores_dice_cuales_tienen_llave_sin_mostrarla(self):
+        e = self.operar("/panel/estado")[1]
+        self.assertEqual(set(e["proveedores"]), {"groq", "gemini", "grok", "openai"})
+        self.assertTrue(all(isinstance(v, bool) for v in e["proveedores"].values()))
 
     def test_sin_clave_de_modelo_lo_dice(self):
         import os

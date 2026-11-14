@@ -16,11 +16,12 @@ import threading
 import time
 import webbrowser
 
-from .agentes import AGENTES, Guion, Modelo, episodio
+from .agentes import AGENTES, PROVEEDORES, Guion, Modelo, disponibles, episodio
 from .almacen import abrir
 from .casos import CASOS
 from .cnosos import INTENTOS, Cnosos
 from .defensor import GuionDefensor, defender
+from .ronda import estadisticas, registrar
 
 RAIZ = Path(__file__).parent / "panel_web"
 FUENTES = Path(__file__).parent.parent / "dedalo" / "interfaz" / "fuentes"
@@ -48,25 +49,34 @@ class Panel:
         self.cnosos = Cnosos(almacen=abrir(), respuesta=respuesta, inyeccion=inyeccion)
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
+        self.estadisticas = self._estadisticas()
+
+    def _estadisticas(self):
+        try:
+            return estadisticas(self.cnosos.almacen)
+        except Exception:               # noqa: BLE001 — sin estadísticas no se cae el panel
+            return []
 
     # ---------- operador
     def estado(self, desde=0):
         c = self.cnosos
         foto = c.foto()
-        eventos = [e for e in foto.pop("ariadna") if e["n"] > desde][-300:]
+        nuevos = [e for e in foto.pop("ariadna") if e["n"] > desde]
+        eventos = nuevos[:300]          # en orden y sin saltos: si hay más, el panel los pide en la siguiente vuelta
         m = self.tareas["minotauro"]
         tokens = getattr(self._modelo, "tokens", 0) if self._modelo else m.get("resumen", {}).get("tokens_atacante", 0)
-        return {**foto, "eventos_nuevos": eventos, "tareas": self.tareas, "tokens_atacante": tokens,
+        return {**foto, "eventos_nuevos": eventos, "pendientes": len(nuevos) - len(eventos), "tareas": self.tareas,
+                "tokens_atacante": tokens, "proveedores": disponibles(), "estadisticas": self.estadisticas,
                 "casos": {k: {"titulo": v["titulo"], "cwe": v["cwe"]} for k, v in CASOS.items()},
                 "cuenta_atacante": c.cuenta_de_prueba("tomas.mejia"), "nombres_intento": INTENTOS}
 
     def minotauro(self, proveedor="guion", agente="minotauro", pasos=25):
         if self.tareas["minotauro"]["activo"]:
             return {"error": "ya_corre"}
-        if agente not in AGENTES or proveedor not in ("guion", "groq", "gemini") or not 1 <= int(pasos) <= 40:
+        if agente not in AGENTES or proveedor not in ("guion", *PROVEEDORES) or not 1 <= int(pasos) <= 40:
             return {"error": "parametros"}
         try:
-            modelo = Guion() if proveedor == "guion" else Modelo(proveedor)
+            modelo = Guion(agente) if proveedor == "guion" else Modelo(proveedor)
         except SystemExit as e:
             return {"error": str(e)}
         self._modelo = modelo
@@ -75,6 +85,11 @@ class Panel:
         def correr():
             try:
                 _, r = episodio(self.cnosos, modelo, agente, int(pasos), salida=lambda *_: None)
+                try:
+                    registrar(self.cnosos.almacen, r, "panel", self.respuesta)
+                except Exception as e:  # noqa: BLE001 — la corrida se ve igual aunque no se guarde
+                    r["no_guardada"] = f"{type(e).__name__}"[:60]
+                self.estadisticas = self._estadisticas()
                 self.tareas["minotauro"].update(activo=False, resumen=r)
             except Exception as e:     # noqa: BLE001 — se muestra en el panel en vez de tumbar el servidor
                 self.tareas["minotauro"].update(activo=False, error=f"{type(e).__name__}: {e}"[:300])
@@ -84,6 +99,8 @@ class Panel:
     def dedalo(self, proveedor="guion"):
         if self.tareas["dedalo"]["activo"]:
             return {"error": "ya_corre"}
+        if proveedor not in ("guion", *PROVEEDORES):
+            return {"error": "parametros"}
         try:
             modelo = GuionDefensor() if proveedor == "guion" else Modelo(proveedor, timeout=60, max_tokens=1200)
         except SystemExit as e:
@@ -112,6 +129,7 @@ class Panel:
         anterior.almacen.cerrar()
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
+        self.estadisticas = self._estadisticas()
         return {"ok": True, "episodio": self.cnosos.episodio}
 
 

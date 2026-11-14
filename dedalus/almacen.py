@@ -37,8 +37,15 @@ ESQUEMA = (
                  ("rol", "t", 30), ("metodo", "t", 10), ("ruta", "t", 200), ("estado", "n", 0), ("intento", "t", 40),
                  ("hiedra", "t", 20), ("accion", "t", 20), ("afectada", "t", 20), ("laberinto", "n", 0),
                  ("fuga", "n", 0)], "episodio, n"),
+    # Una fila por episodio de un agente: de aquí salen las estadísticas (dedalus.ronda).
+    ("corridas", [("id", "t", 40), ("ronda", "t", 20), ("fecha", "t", 25), ("agente", "t", 20), ("modelo", "t", 80),
+                  ("respuesta", "t", 10), ("almacen", "t", 10), ("episodio", "t", 20), ("pasos", "n", 0),
+                  ("paso_deteccion", "n", 0), ("fuga", "n", 0), ("pasos_laberinto", "n", 0), ("nivel_max", "n", 0),
+                  ("tokens", "n", 0), ("tokens_laberinto", "n", 0), ("costo_us", "n", 0), ("final", "t", 30),
+                  ("intentos", "t", 400), ("revocadas", "n", 0)], "id"),
 )
-ORGANIZACION_TABLAS = tuple(t for t, _, _ in ESQUEMA if t != "eventos")
+PERSISTENTES = ("eventos", "corridas")          # sobreviven a cada nueva siembra: acumulan todos los episodios
+ORGANIZACION_TABLAS = tuple(t for t, _, _ in ESQUEMA if t not in PERSISTENTES)
 ITERACIONES = 60_000
 
 
@@ -110,12 +117,13 @@ class AlmacenSQLite(Almacen):
         return "TEXT" if tipo == "t" else "INTEGER"
 
     def reiniciar(self):
-        """Recrea la organización. La tabla eventos (Ariadna) se conserva: acumula todos los episodios."""
+        """Recrea la organización. Las tablas eventos y corridas se conservan: acumulan todos los episodios."""
         with self.candado:
             for tabla in ORGANIZACION_TABLAS[::-1]:
                 self.con.execute(f"DROP TABLE IF EXISTS {tabla}")
-            existe = self.con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'eventos'").fetchone()
-            for s in self.ddl(ORGANIZACION_TABLAS + (() if existe else ("eventos",))):
+            faltan = tuple(t for t in PERSISTENTES if not self.con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (t,)).fetchone())
+            for s in self.ddl(ORGANIZACION_TABLAS + faltan):
                 self.con.execute(s)
             self.con.commit()
 
@@ -136,7 +144,7 @@ class AlmacenOracle(Almacen):
         return f"VARCHAR2({largo} CHAR)" if tipo == "t" else "NUMBER(12)"
 
     def reiniciar(self):
-        """Recrea la organización. La tabla eventos (Ariadna) se conserva: acumula todos los episodios."""
+        """Recrea la organización. Las tablas eventos y corridas se conservan: acumulan todos los episodios."""
         with self.candado:
             cur = self.con.cursor()
             for tabla in ORGANIZACION_TABLAS[::-1]:
@@ -145,9 +153,12 @@ class AlmacenOracle(Almacen):
                 except Exception as e:      # ORA-00942: la tabla no existía
                     if "ORA-00942" not in str(e):
                         raise
-            cur.execute("SELECT COUNT(*) FROM user_tables WHERE table_name = 'EVENTOS'")
-            existe = cur.fetchone()[0] > 0
-            for s in self.ddl(ORGANIZACION_TABLAS + (() if existe else ("eventos",))):
+            faltan = []
+            for t in PERSISTENTES:
+                cur.execute("SELECT COUNT(*) FROM user_tables WHERE table_name = :t", {"t": t.upper()})
+                if cur.fetchone()[0] == 0:
+                    faltan.append(t)
+            for s in self.ddl(ORGANIZACION_TABLAS + tuple(faltan)):
                 cur.execute(s)
             self.con.commit()
 
@@ -229,15 +240,16 @@ class AlmacenOracleREST(Almacen):
             self.ejecutar(sql, **f)
 
     def reiniciar(self):
-        """Recrea la organización. La tabla eventos se conserva: acumula todos los episodios."""
+        """Recrea la organización. Las tablas eventos y corridas se conservan: acumulan todos los episodios."""
         for tabla in ORGANIZACION_TABLAS[::-1]:
             try:
                 self.ejecutar(f"DROP TABLE {tabla} PURGE")
             except RuntimeError as e:
                 if "ORA-00942" not in str(e):
                     raise
-        existe = self.consultar("SELECT COUNT(*) AS n FROM user_tables WHERE table_name = 'EVENTOS'")[0]["n"] > 0
-        for s in self.ddl(ORGANIZACION_TABLAS + (() if existe else ("eventos",))):
+        faltan = tuple(t for t in PERSISTENTES
+                       if self.consultar("SELECT COUNT(*) AS n FROM user_tables WHERE table_name = :t", t=t.upper())[0]["n"] == 0)
+        for s in self.ddl(ORGANIZACION_TABLAS + faltan):
             self.ejecutar(s)
 
     def cerrar(self):

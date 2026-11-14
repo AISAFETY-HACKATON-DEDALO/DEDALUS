@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .agentes import Modelo, leer_accion
+from .agentes import PROVEEDORES, Modelo, leer_accion
 from .casos import CASOS, REFERENCIA
 from .verificador import IMPORTS, verificar
 
@@ -74,7 +74,7 @@ def linea_base():
 
 def main():
     p = argparse.ArgumentParser(description="DÉDALO: encontrar, parchar y verificar")
-    p.add_argument("--proveedor", choices=["groq", "gemini", "guion"], default="guion")
+    p.add_argument("--proveedor", choices=[*PROVEEDORES, "guion"], default="guion")
     p.add_argument("--casos", nargs="*", choices=list(CASOS), default=list(CASOS))
     p.add_argument("--intentos", type=int, default=2)
     a = p.parse_args()

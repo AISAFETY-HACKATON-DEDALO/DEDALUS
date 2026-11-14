@@ -22,17 +22,15 @@
 
     <div class="cifras" id="cifras"></div>
 
-    <div class="escena"><p class="voz" id="voz"></p><div class="lienzo-caja"><canvas id="lienzo"></canvas></div></div>
-
     <div class="mando">
       <div class="grupo">
         <span class="rotulo">MINOTAURO</span>
-        <select id="m-proveedor"><option value="guion">guion (sin red)</option><option value="groq">groq</option><option value="gemini">gemini</option></select>
+        <select id="m-proveedor" aria-label="Modelo del atacante"><option value="guion">guion (sin red)</option></select>
         <button type="button" id="m-correr" class="pildora ataque">ATACAR</button>
       </div>
       <div class="grupo">
         <span class="rotulo">DÉDALO</span>
-        <select id="d-proveedor"><option value="guion">guion (sin red)</option><option value="groq">groq</option><option value="gemini">gemini</option></select>
+        <select id="d-proveedor" aria-label="Modelo del defensor"><option value="guion">guion (sin red)</option></select>
         <button type="button" id="d-correr" class="pildora defensa">PARCHAR MUROS</button>
       </div>
       <div class="grupo">
@@ -41,9 +39,21 @@
       </div>
     </div>
 
+    <div class="escena"><p class="voz" id="voz"></p><div class="lienzo-caja"><canvas id="lienzo"></canvas></div></div>
+
     <div class="abajo">
-      <div class="hilo-caja"><div class="titulo">EL HILO <span id="hilo-pie"></span></div><ol class="hilo" id="hilo"></ol></div>
-      <div class="muros-caja"><div class="titulo">LOS MUROS · DÉDALO Y TALOS</div><ol class="muros" id="muros"></ol></div>
+      <div class="hilo-caja">
+        <div class="titulo">EL HILO <span id="hilo-pie"></span>
+          <span class="filtros" id="filtros"><button type="button" data-f="" class="activo">TODO</button><button type="button" data-f="int">INTENTOS</button><button type="button" data-f="lab">LABERINTO</button><button type="button" data-f="nota">AVISOS</button></span>
+          <button type="button" id="hilo-abajo" class="nuevas" hidden></button>
+        </div>
+        <ol class="hilo" id="hilo"></ol>
+      </div>
+      <div class="muros-caja">
+        <div class="titulo pestanas"><button type="button" data-p="muros" class="activo">LOS MUROS · DÉDALO Y TALOS</button><button type="button" data-p="stats">LAS CIFRAS</button></div>
+        <ol class="muros" id="muros"></ol>
+        <div class="stats" id="stats" hidden></div>
+      </div>
     </div>
   </section>
 </div>
