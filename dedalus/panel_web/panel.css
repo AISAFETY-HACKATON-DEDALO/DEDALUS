@@ -28,6 +28,10 @@ iframe{width:100%;height:100%;border:0;background:#f3f5f8}
 .cifra.mal b{color:var(--aurora)}
 .cifra.hilo b{color:var(--hilo)}
 .cifra.ok b{color:var(--olivo)}
+.detras{position:relative}
+.pegar{position:absolute;top:150px;left:16px;right:16px;z-index:3;background:#0a0507;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;border:1px solid var(--aurora);border-radius:4px;padding:8px 10px;color:var(--tiza)}
+.pegar b{color:var(--aurora);font-weight:400}
+.pegar input{flex:1 1 280px;font:inherit;color:var(--tiza);background:#0b0b0b;border:1px solid #333;border-radius:6px;height:30px;padding:0 8px}
 .escena{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;border:1px solid var(--linea);border-radius:4px}
 .lienzo-caja{position:relative;min-height:0}
 canvas{position:absolute;inset:0;display:block;width:100%;height:100%}

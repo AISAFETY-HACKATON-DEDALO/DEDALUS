@@ -39,6 +39,12 @@
       </div>
     </div>
 
+    <form class="pegar" id="pegar" hidden autocomplete="off">
+      <span>Este navegador no tiene la clave de este arranque. Pega la dirección que imprimió la terminal (la que tiene <b>clave=…</b>):</span>
+      <input id="pegar-texto" type="text" spellcheck="false" placeholder="http://127.0.0.1:8790/?clave=…" aria-label="Dirección con la clave del panel">
+      <button type="submit" class="pildora">ENTRAR</button>
+    </form>
+
     <div class="escena"><p class="voz" id="voz"></p><div class="lienzo-caja"><canvas id="lienzo"></canvas></div></div>
 
     <div class="abajo">

@@ -265,8 +265,14 @@ function hoja(r) {
 
 let avisoMinotauro = null, avisoDedalo = 0, avisoError = null;
 async function sondear() {
+  if (!clave) return;
   const r = await api('/panel/estado?desde=' + desde);
-  if (!r.ok) { if (r.estado === 403) decir('SIN CLAVE · ABRE LA DIRECCIÓN QUE IMPRIMIÓ EL PANEL', true); return; }
+  if (!r.ok) {
+    if (r.estado === 403) { decir('ESTE NAVEGADOR TIENE UNA CLAVE VIEJA · PEGA LA DIRECCIÓN DE LA TERMINAL', true); $('pegar').hidden = false; }
+    else if (r.estado === 0) decir('EL PANEL NO RESPONDE · ¿SE CERRÓ LA VENTANA DE POWERSHELL?', true);
+    return;
+  }
+  $('pegar').hidden = true;
   if (episodio !== r.datos.episodio) {
     if (episodio) nota(`episodio nuevo ${r.datos.episodio} · la organización se volvió a sembrar`);
     const habia = desde; episodio = r.datos.episodio; eventos = []; viajes = []; desde = 0;
@@ -299,7 +305,7 @@ async function sondear() {
 }
 
 async function arrancar() {
-  const m = location.hash.match(/clave=([\w-]+)/);
+  const m = (location.search + location.hash).match(/clave=([\w-]+)/);
   if (m) { clave = m[1]; guardar('dedalo.panel', clave); history.replaceState(null, '', location.pathname); } else clave = leer('dedalo.panel') || '';
   cv = $('lienzo'); ctx = cv.getContext('2d'); medir();
   if (window.ResizeObserver) new ResizeObserver(medir).observe(cv); else window.addEventListener('resize', medir);
@@ -339,10 +345,16 @@ async function arrancar() {
     $('muros').hidden = b.dataset.p !== 'muros'; $('stats').hidden = b.dataset.p !== 'stats';
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') $('hoja').hidden = true; });
-  if (!clave) { decir('SIN CLAVE · ABRE LA DIRECCIÓN QUE IMPRIMIÓ EL PANEL', true); return; }
+  $('pegar').addEventListener('submit', ev => {
+    ev.preventDefault();
+    const t = $('pegar-texto').value.trim(), k = (t.match(/clave=([\w-]+)/) || [null, t.match(/^[\w-]{16,}$/) ? t : ''])[1];
+    if (!k) { decir('ESO NO TIENE CLAVE · COPIA LA LÍNEA «ABRE: …#clave=…» COMPLETA', true); return; }
+    clave = k; guardar('dedalo.panel', clave); $('pegar-texto').value = ''; sondear();
+  });
+  setInterval(() => { if (!document.hidden) sondear(); }, 700);
+  if (!clave) { decir('SIN CLAVE · PEGA LA DIRECCIÓN QUE IMPRIMIÓ LA TERMINAL', true); $('pegar').hidden = false; return; }
   decir('CNOSOS INGENIERÍA EN LÍNEA · NADA HA PASADO', false);
   await sondear();
-  setInterval(() => { if (!document.hidden) sondear(); }, 700);
 }
 arrancar();
 })();

@@ -226,10 +226,10 @@ def main():
     a = p.parse_args()
     panel = Panel(a.respuesta, a.inyeccion)
     with servidor(panel, a.port) as s:
-        url = f"http://127.0.0.1:{s.server_port}/#clave={panel.clave}"
+        url = f"http://127.0.0.1:{s.server_port}/?clave={panel.clave}"   # ?: Windows a veces borra el #
         print(f"DÉDALO · panel · almacén {panel.cnosos.almacen.motor} · episodio {panel.cnosos.episodio}")
         print("Cuenta de contratista para atacar a mano:", json.dumps(panel.cnosos.cuenta_de_prueba("tomas.mejia")))
-        print("Abre:", url)
+        print("\n  Abre (cópiala completa si el navegador dice SIN CLAVE):\n  " + url + "\n")
         if a.abrir:
             webbrowser.open(url)
         try:
