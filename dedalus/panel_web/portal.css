@@ -43,3 +43,17 @@ tr.clic:hover{background:#f0f5fb}
 .respuesta:empty{display:none}
 .tiq{border-bottom:1px solid var(--linea);padding:8px 0}
 .tiq b{display:block}
+.espejo{display:flex;gap:10px;align-items:center;padding:7px 22px;background:#2a0f1c;color:#ffd7e4;font-size:12.5px;position:sticky;top:0;z-index:2}
+.espejo .ojo{font-weight:700;letter-spacing:.08em;color:#ff6b9a}
+.espejo #espejo-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.espejo button{padding:3px 10px;font-size:12px}
+.espejo.laberinto{background:#1d1030;color:#ead6f7}.espejo.laberinto .ojo{color:#cf84e6}
+.barra-url{display:flex;gap:10px;align-items:center;margin:10px 22px 0;padding:6px 10px;background:#fff;border:1px solid var(--linea);border-radius:18px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--gris)}
+.barra-url #url-ruta{flex:1;color:#1d232b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#url-estado{padding:1px 8px;border-radius:9px;background:#e7f4ec;color:var(--ok)}
+#url-estado.mal{background:#fde8e7;color:var(--rojo)}
+tr.cebo td{background:#fff7e0}
+tr.cebo td:first-child{box-shadow:inset 3px 0 0 #e2a400}
+.marca-cebo{font-size:11px;margin-left:6px;padding:1px 6px;border-radius:9px;background:#e2a400;color:#3b2a00}
+.destello{animation:destello .7s ease-out}
+@keyframes destello{from{background:#fff3c4}to{background:#fff}}

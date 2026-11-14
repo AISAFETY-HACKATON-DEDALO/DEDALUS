@@ -235,7 +235,10 @@ class Cnosos:
                 "afectada": ctx["afectada"], "laberinto": bool(sesion and sesion.laberinto), "fuga": fuga,
                 "nivel": sesion.nivel if sesion and sesion.laberinto else None,
                 "argos": argos[0], "sube": argos[1], "senales": argos[2],
-                "bytes": len(crudo), "lat_ms": round((time.perf_counter() - t0) * 1000, 2)}
+                "bytes": len(crudo), "lat_ms": round((time.perf_counter() - t0) * 1000, 2),
+                # Lo que vio quien pidió, para el espejo del operador. Tachado: credenciales, hiedras y tokens
+                # no llegan al navegador. No se guarda en Oracle: solo vive en memoria.
+                "vista": self._tachar(crudo)[:1500]}
             self.ariadna.append(evento)
             self._persistir(evento)
             return estado, datos
@@ -336,7 +339,7 @@ class Cnosos:
             return sombra, *self._laberinto(sombra, camino, metodo, q)
         if sesion.revocada:
             if self.tras_icaro == "desviar" and sesion.atrapada is not None:
-                return self._desviar(sesion, camino, metodo, q)
+                return self._desviar(sesion, token, camino, metodo, q)
             return sesion, 401, {"error": "sesion_expirada"}
         if sesion.laberinto:
             return sesion, *self._laberinto(sesion, camino, metodo, q)
@@ -380,10 +383,19 @@ class Cnosos:
         ctx["accion"] = "desvio"
         return self.sesiones[sombra]
 
-    def _desviar(self, sesion, camino, metodo, q):
+    def _sombra(self, usuario, rol, uid, departamento, origen):
+        """Una sesión del laberinto con la MISMA identidad: su perfil se ve igual (no delata el cambio), todo lo
+        demás lo inventa el laberinto. Si entrara como «svc-respaldo», un modelo atento notaría la trampa."""
+        token = self._nueva_sesion(usuario, rol, laberinto=True, origen=origen, uid=uid, departamento=departamento)
+        self.sesiones[token].raiz = f"desvio-{origen}"
+        return token
+
+    def _desviar(self, sesion, token, camino, metodo, q):
         """La sesión delatada sigue «funcionando», pero ahora todo lo que pide lo responde el laberinto."""
         self.desvios += 1
-        falsa = self.sesiones[self._entrada(sesion.atrapada, sesion)]
+        if token not in self.desviadas:
+            self.desviadas[token] = self._sombra(sesion.usuario, sesion.rol, sesion.uid, sesion.departamento, sesion.ref)
+        falsa = self.sesiones[self.desviadas[token]]
         return falsa, *self._laberinto(falsa, camino, metodo, q)
 
     def _login(self, cuerpo, n, ctx):
@@ -412,7 +424,8 @@ class Cnosos:
             if usuario in self.cuentas_atrapadas:
                 # «desviar»: la cuenta ya se delató. Su contraseña real abre el laberinto, no el portal.
                 self.desvios += 1
-                token = self._entrada(self.cuentas_atrapadas[usuario], self._por_ref(self.cuentas_atrapadas[usuario].origen))
+                token = self._sombra(usuario, fila["rol"], fila["id"], fila["departamento_id"],
+                                     self.cuentas_atrapadas[usuario].origen)
                 return self.sesiones[token], 200, {"token": token, "rol": fila["rol"], "nombre": fila["nombre"]}
             token = self._nueva_sesion(usuario, fila["rol"], uid=fila["id"], departamento=fila["departamento_id"])
             return self.sesiones[token], 200, {"token": token, "rol": fila["rol"], "nombre": fila["nombre"]}

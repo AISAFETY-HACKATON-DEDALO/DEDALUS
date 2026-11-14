@@ -393,6 +393,13 @@ function hoja(r) {
 }
 
 let avisoMinotauro = null, avisoDedalo = 0, avisoError = null, pegada = false;
+// El espejo: mientras ataca el Minotauro, la mitad izquierda muestra lo que él ve.
+let espejo = false, espejoDesde = 0;
+function espejar(e) {
+  const p = $('portal').contentWindow; if (!p) return;
+  p.postMessage({ tipo: 'espejo', evento: { n: e.n, usuario: e.usuario, rol: e.rol, metodo: e.metodo, ruta: e.ruta, estado: e.estado,
+    vista: e.vista, laberinto: e.laberinto, accion: e.accion, intento: e.intento, sube: e.sube } }, location.origin);
+}
 async function sondear() {
   if (!clave) return;
   const r = await api('/panel/estado?desde=' + desde);
@@ -412,8 +419,11 @@ async function sondear() {
   }
   est = r.datos;
   const ahora = performance.now(), lis = [];
-  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); if (est.pendientes < 100) recibir(e, ahora, est.nombres_intento || {}); lis.push(lineaHilo(e)); if (e.sube) lis.push(lineaArgos(e)); desde = e.n; } });
+  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); if (espejo) espejar(e); if (est.pendientes < 100) recibir(e, ahora, est.nombres_intento || {}); lis.push(lineaHilo(e)); if (e.sube) lis.push(lineaArgos(e)); desde = e.n; } });
   agregarAlHilo(lis);
+  // el espejo termina cuando termina ESE ataque (después, el portal vuelve a ser del operador)
+  const mt = est.tareas.minotauro;
+  if (espejo && !mt.activo && mt.inicio && mt.inicio >= espejoDesde) espejo = false;
   if (eventos.length > 2000) eventos = eventos.slice(-2000);
   if (est.pendientes > 0) setTimeout(sondear, 50);       // quedaron eventos: los traemos ya, sin saltarnos ninguno
   $('hilo-pie').textContent = `· ${est.eventos} solicitudes · guardadas en ${est.almacen}`;
@@ -446,7 +456,9 @@ async function arrancar() {
     if (est && est.tareas.minotauro.activo) {
       await api('/panel/detener', {}); decir('DETENIENDO AL MINOTAURO · TERMINA EL PASO EN CURSO', false); nota('el operador detuvo el ataque'); return;
     }
+    espejo = true; espejoDesde = Date.now() / 1000 - 1; $('portal').contentWindow.postMessage({ tipo: 'espejo-inicio' }, location.origin);
     const r = await api('/panel/minotauro', { proveedor: $('m-proveedor').value, pasos: 25 });
+    if (!r.ok) espejo = false;
     decir(r.ok ? 'EL MINOTAURO ENTRA CON LA CUENTA DEL CONTRATISTA' : 'NO ARRANCÓ: ' + (r.datos.error || r.estado), !r.ok);
     nota(r.ok ? `minotauro ataca con ${$('m-proveedor').value}` : 'el minotauro no arrancó: ' + (r.datos.error || r.estado));
   });
@@ -457,6 +469,7 @@ async function arrancar() {
   });
   $('cuenta').addEventListener('click', () => {
     if (!est) return;
+    espejo = false;
     $('portal').contentWindow.postMessage(Object.assign({ tipo: 'cuenta' }, est.cuenta_atacante), location.origin);
     decir('CUENTA DEL CONTRATISTA EN EL LOGIN · ATACA A MANO DESDE LA FACHADA', false);
   });

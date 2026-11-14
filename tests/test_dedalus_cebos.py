@@ -147,6 +147,9 @@ class CebosAlSospechoso(Base):
         self.assertTrue(self.c.ariadna[-1]["laberinto"])
         nuevo = self.login(CONTRATISTA)[1]["token"]                  # y su contraseña real abre el laberinto
         self.assertTrue(self.c.sesiones[nuevo].laberinto)
+        # sin delatarse: sigue siendo él, y su perfil es el de siempre
+        self.assertEqual(self.c.sesiones[nuevo].usuario, CONTRATISTA)
+        self.assertEqual(self.get("/api/perfil", nuevo)[1]["usuario"], CONTRATISTA)
         self.get("/api/archivos/6", nuevo)
         self.get("/api/perfil", nuevo)
         reales = [e for e in self.c.ariadna if e["n"] > n_deteccion and not e["laberinto"]]
