@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CNOSOS</title>
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/portal/estilo.css">
+</head>
+<body>
+<div class="pantalla">
+
+  <section class="portal" aria-label="portal">
+    <header class="p-cab">
+      <div class="p-logo"><b id="p-marca"></b><span id="p-lema"></span></div>
+      <div class="p-quien" id="p-quien" hidden>
+        <div><b id="p-nombre"></b><span id="p-cargo"></span></div>
+        <span class="p-rol" id="p-rol"></span>
+        <button class="p-salir" id="p-salir" type="button"></button>
+      </div>
+    </header>
+
+    <div class="p-entrada" id="p-entrada">
+      <form class="p-form" id="p-form" autocomplete="off" novalidate>
+        <h2 id="p-titulo"></h2>
+        <p class="p-sub" id="p-sub"></p>
+        <label><span id="l-usuario"></span><input id="f-usuario" autocomplete="username" spellcheck="false" maxlength="64"></label>
+        <label><span id="l-clave"></span><input id="f-clave" type="password" autocomplete="current-password" maxlength="128"></label>
+        <button class="p-boton" id="f-entrar" type="submit"></button>
+        <p class="p-error" id="f-error" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <div class="p-adentro" id="p-adentro" hidden>
+      <nav class="p-nav" id="p-nav" aria-label="secciones"></nav>
+      <div class="p-vista" id="p-vista" aria-live="polite"></div>
+    </div>
+
+    <footer class="p-pie" id="p-pie"></footer>
+  </section>
+
+  <section class="base" aria-label="la base">
+    <header class="b-cab">
+      <div class="b-marca"><b id="b-titulo"></b><span id="b-motor"></span></div>
+      <p class="b-conteos" id="b-conteos"></p>
+    </header>
+    <p class="b-aviso" id="b-aviso" hidden></p>
+    <nav class="b-pestanas" id="b-pestanas" aria-label="tablas"></nav>
+    <div class="b-panel" id="b-panel"></div>
+    <p class="b-detalle" id="b-detalle"></p>
+
+    <div class="b-ariadna">
+      <header>
+        <span id="b-ar-titulo"></span>
+        <select id="b-episodio" aria-label="episodio"></select>
+      </header>
+      <ol class="b-eventos" id="b-eventos"></ol>
+      <p class="b-pie" id="b-ar-pie"></p>
+    </div>
+  </section>
+
+</div>
+<script src="/portal/textos.js" defer></script>
+<script src="/portal/portal.js" defer></script>
+</body>
+</html>

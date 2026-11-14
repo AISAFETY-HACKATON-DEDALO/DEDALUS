@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cnosos Ingeniería · Portal interno</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="portal.css">
+</head>
+<body>
+<header class="barra">
+  <div class="logo"><span class="sello">C</span><div><b>Cnosos Ingeniería</b><small>Portal interno de colaboradores</small></div></div>
+  <div class="quien" id="quien" hidden><span id="quien-nombre"></span><button type="button" id="salir">Salir</button></div>
+</header>
+
+<main>
+  <section id="vista-login" class="tarjeta login">
+    <h1>Iniciar sesión</h1>
+    <p class="suave">Use su usuario corporativo. El acceso es monitoreado.</p>
+    <form id="form-login" autocomplete="off">
+      <label>Usuario<input id="usuario" name="usuario" spellcheck="false"></label>
+      <label>Contraseña<input id="clave" name="clave" type="password"></label>
+      <button type="submit" class="principal">Ingresar</button>
+      <p class="error" id="error-login"></p>
+    </form>
+  </section>
+
+  <section id="vista-app" hidden>
+    <nav class="pestanas" id="pestanas">
+      <button type="button" data-v="inicio" class="activa">Inicio</button>
+      <button type="button" data-v="archivos">Archivos</button>
+      <button type="button" data-v="buscar">Buscar</button>
+      <button type="button" data-v="tiquetes">Tiquetes</button>
+      <button type="button" data-v="directorio">Directorio</button>
+      <button type="button" data-v="admin">Administración</button>
+    </nav>
+    <div class="tarjeta" id="contenido"></div>
+  </section>
+
+  <details class="tarjeta consola" id="consola">
+    <summary>Consola de solicitudes <span class="suave">· para probar el portal a mano</span></summary>
+    <form id="form-consola" autocomplete="off">
+      <div class="fila">
+        <select id="c-metodo"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select>
+        <input id="c-ruta" value="/api/perfil" spellcheck="false">
+        <button type="submit" class="principal">Enviar</button>
+      </div>
+      <label>Cabeceras (JSON) <span class="suave">· si no pone Authorization, se usa su sesión</span>
+        <textarea id="c-cabeceras" rows="2" spellcheck="false">{}</textarea></label>
+      <label>Cuerpo (JSON)<textarea id="c-cuerpo" rows="2" spellcheck="false"></textarea></label>
+    </form>
+    <pre class="respuesta" id="c-respuesta"></pre>
+  </details>
+</main>
+<script src="portal.js"></script>
+</body>
+</html>
