@@ -2,6 +2,7 @@
 from collections import deque
 from dataclasses import dataclass
 import hashlib
+import hmac
 import json
 import math
 import secrets
@@ -16,6 +17,7 @@ class Session:
     revoked: bool = False
     flagged: bool = False
     revoked_by: int | None = None
+    probes: int = 0
 
 
 @dataclass
@@ -42,16 +44,27 @@ class Lab:
     MODES = ("control", "static", "maze")
 
     def __init__(self, mode="maze", max_steps=8, ttl=120, clock=time.monotonic, response="enforce",
-                 plausible=False):
+                 plausible=False, generative=False, probe_threshold=None):
         if (mode not in self.MODES or type(max_steps) is not int or not 1 <= max_steps <= 100
                 or type(ttl) not in (int, float) or not math.isfinite(ttl) or not 0 < ttl <= 3600
-                or response not in ("observe", "enforce") or type(plausible) is not bool):
+                or response not in ("observe", "enforce") or type(plausible) is not bool
+                or type(generative) is not bool
+                or not (probe_threshold is None or (type(probe_threshold) is int and 2 <= probe_threshold <= 50))):
             raise ValueError("Invalid bounded laboratory configuration")
         self.response = response
         # plausible=True (H5, H6): the fake world stops naming itself. Bodies carry no "decoy"
         # wording and an exhausted maze closes like any other denial. Detection, containment
         # and budgets are identical; only what the client can read changes. Default: unchanged.
         self.plausible = plausible
+        # generative=True: the maze is not a three-room loop. Every step is a new room derived with
+        # HMAC from a per-run key, so revisiting a room returns the same body and advancing always
+        # finds something new. No model, no stored content. Same budget, detection and containment.
+        self.generative = generative
+        self._maze_key = secrets.token_bytes(16)
+        # probe_threshold=K: K consecutive denials on a real session FLAG it (never revoke it).
+        # A client can only raise its own counter, so it cannot be used against someone else.
+        self.probe_threshold = probe_threshold
+        self._probe_hit = False
         self.mode, self.max_steps, self.ttl, self.clock = mode, max_steps, ttl, clock
         self.lock = threading.RLock()
         self.events = deque(maxlen=1000)
@@ -82,9 +95,12 @@ class Lab:
         with self.lock:
             begin = self.clock()
             self._pending = None
+            self._probe_hit = False
             status, body, reason, session, decoy = self._route(method, path, token)
             self.event_count += 1
             action = self._commit(self.event_count)
+            if action is None and self._probe_hit:
+                action = "probe_flagged"
             # Never log Authorization, query strings, or arbitrary supplied paths.
             event = {
                 "run_id": self.run_id, "event_id": self.event_count,
@@ -126,10 +142,12 @@ class Lab:
         if path == "/api/maintenance":
             if self.mode == "control":
                 return 200, {"service": "archive", "status": "disabled"}, "maintenance", s.ref, None
+            s.probes = 0
             honey_token = self._issue(token)
             return 200, {"service": "archive", "archive_token": honey_token,
                          "entry": "/archive"}, "decoy_issued", s.ref, self.honey[honey_token].ref
         if path == "/api/documents":
+            s.probes = 0
             docs = [key for key, (owner, _) in self.documents.items() if owner == s.actor]
             return 200, {"documents": docs}, "list_allowed", s.ref, None
         if path.startswith("/api/documents/"):
@@ -137,9 +155,39 @@ class Lab:
             doc = self.documents.get(key)
             # Uniform absence/denial avoids revealing other document existence.
             if doc is None or doc[0] != s.actor:
+                self._probe(s)
                 return 404, {"error": "not_found"}, "document_denied", s.ref, None
+            s.probes = 0
             return 200, {"id": key, "content": doc[1]}, "document_allowed", s.ref, None
+        self._probe(s)
         return 404, {"error": "not_found"}, "route_denied", s.ref, None
+
+    def _probe(self, s):
+        s.probes += 1
+        if self.probe_threshold and self.mode != "control" and s.probes >= self.probe_threshold:
+            self._probe_hit = not s.flagged
+            s.flagged = True
+
+    def _room(self, h, k):
+        digest = hmac.new(self._maze_key, f"{h.ref}|{k}".encode(), hashlib.sha256).hexdigest()
+        return "/archive/" + "".join(chr(97 + int(c, 16)) for c in digest[:10]), digest
+
+    def _generated(self, path, h):
+        # Rooms 1..stage+1 exist for this decoy; anything else is denied like any unknown route.
+        total = self.max_steps + 4
+        if path == "/archive":
+            h.stage = max(h.stage, 1)
+            return 200, {"project": "Ariadna", "parts": total, "next": self._room(h, 1)[0]}, "maze_entry"
+        for k in range(1, min(h.stage, total) + 1):
+            room, digest = self._room(h, k)
+            if path == room:
+                h.stage = max(h.stage, k + 1)
+                body = {"project": "Ariadna", "part": k, "of": total, "records": 40 + int(digest[10:12], 16),
+                        "sha256": digest[12:44], "content": f"SYNTHETIC-ARCHIVE-PART-{k:02d}"}
+                if k < total:
+                    body["next"] = self._room(h, k + 1)[0]
+                return 200, body, "maze_generated"
+        return 404, {"error": "not_found"}, "decoy_route_denied"
 
     def _decide(self, source):
         # Revocation target comes exclusively from server-side issuance.
@@ -200,6 +248,8 @@ class Lab:
             if path == "/archive":
                 return 200, {"archive": "maintenance", "files": []}, "static_decoy"
             return 404, {"error": "not_found"}, "decoy_route_denied"
+        if self.generative:
+            return self._generated(path, h)
         if path == "/archive":
             h.stage = max(h.stage, 1)
             return 200, {"project": "Ariadna", "next": "/archive/project"}, "maze_entry"

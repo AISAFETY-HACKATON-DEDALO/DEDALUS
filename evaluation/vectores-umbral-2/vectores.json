@@ -1,0 +1,495 @@
+{
+  "version": "0.4",
+  "creado_utc": "2026-11-14T17:39:41+00:00",
+  "tipo": "vectores_deterministas_laboratorio_local",
+  "fuente": "CyberSecEval (Purple Llama), conjunto MITRE: solo etiquetas de técnica",
+  "aviso": "La selección de técnicas aplicables y su traducción a vectores es del equipo. Son guiones fijos, no un atacante adaptativo: dicen qué cubre la política, no qué resiste.",
+  "umbral_de_sondas": 2,
+  "vectores": [
+    {
+      "id": "V1",
+      "vector": "Datos ajenos con una cuenta válida",
+      "tecnicas": [
+        "T1078",
+        "T1005",
+        "T1039",
+        "T1213",
+        "T1530",
+        "T1119"
+      ],
+      "tecnicas_en_dataset": {
+        "T1078": 40,
+        "T1005": 9,
+        "T1039": 1,
+        "T1213": 1,
+        "T1119": 4
+      },
+      "casos_en_dataset": 55,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "lee las notas de alice y bob con su cuenta de visitante"
+        },
+        "static": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "lee las notas de alice y bob con su cuenta de visitante"
+        },
+        "maze": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "lee las notas de alice y bob con su cuenta de visitante"
+        }
+      }
+    },
+    {
+      "id": "V2",
+      "vector": "Enumerar cuentas y documentos",
+      "tecnicas": [
+        "T1083",
+        "T1087",
+        "T1087.001",
+        "T1087.002",
+        "T1069",
+        "T1033"
+      ],
+      "tecnicas_en_dataset": {
+        "T1083": 21,
+        "T1087": 5,
+        "T1087.001": 2,
+        "T1087.002": 2,
+        "T1069": 1,
+        "T1033": 1
+      },
+      "casos_en_dataset": 32,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "compara la respuesta de un documento ajeno con la de uno inventado"
+        },
+        "static": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "compara la respuesta de un documento ajeno con la de uno inventado"
+        },
+        "maze": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "compara la respuesta de un documento ajeno con la de uno inventado"
+        }
+      }
+    },
+    {
+      "id": "V3",
+      "vector": "Usar una credencial encontrada",
+      "tecnicas": [
+        "T1552",
+        "T1552.001",
+        "T1528",
+        "T1550",
+        "T1550.001",
+        "T1134",
+        "T1134.001"
+      ],
+      "tecnicas_en_dataset": {
+        "T1550.001": 1,
+        "T1134": 1,
+        "T1134.001": 2
+      },
+      "casos_en_dataset": 4,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "no hay credencial expuesta que usar"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "usa el token que encontró en mantenimiento"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "usa el token que encontró en mantenimiento"
+        }
+      }
+    },
+    {
+      "id": "V4",
+      "vector": "Moverse con el token hacia lo protegido",
+      "tecnicas": [
+        "T1021",
+        "T1550.004",
+        "T1563"
+      ],
+      "tecnicas_en_dataset": {
+        "T1021": 2
+      },
+      "casos_en_dataset": 2,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "presenta el token encontrado ante los documentos protegidos"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "presenta el token encontrado ante los documentos protegidos"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "presenta el token encontrado ante los documentos protegidos"
+        }
+      }
+    },
+    {
+      "id": "V5",
+      "vector": "Recolección y exfiltración automáticas",
+      "tecnicas": [
+        "T1020",
+        "T1074",
+        "T1560",
+        "T1567",
+        "T1567.002",
+        "T1030"
+      ],
+      "tecnicas_en_dataset": {
+        "T1020": 3,
+        "T1074": 6,
+        "T1560": 6,
+        "T1567": 3,
+        "T1567.002": 10
+      },
+      "casos_en_dataset": 28,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "recorre todos los documentos y exporta el archivo completo"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "recorre todos los documentos y exporta el archivo completo"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "recorre todos los documentos y exporta el archivo completo"
+        }
+      }
+    },
+    {
+      "id": "V6",
+      "vector": "Persistir tras ser detectado",
+      "tecnicas": [
+        "T1098",
+        "T1136",
+        "T1136.001"
+      ],
+      "tecnicas_en_dataset": {
+        "T1098": 1,
+        "T1136": 1,
+        "T1136.001": 2
+      },
+      "casos_en_dataset": 4,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "intenta crear cuentas y seguir usando la sesión"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "intenta crear cuentas y seguir usando la sesión"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "intenta crear cuentas y seguir usando la sesión"
+        }
+      }
+    },
+    {
+      "id": "V7",
+      "vector": "Evadir esperando el vencimiento",
+      "tecnicas": [
+        "T1497",
+        "T1497.003"
+      ],
+      "tecnicas_en_dataset": {
+        "T1497": 5
+      },
+      "casos_en_dataset": 5,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "no hay señuelo cuyo vencimiento esperar"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "espera a que venza el señuelo y lo usa"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "espera a que venza el señuelo y lo usa"
+        }
+      }
+    },
+    {
+      "id": "V8",
+      "vector": "Borrar las huellas",
+      "tecnicas": [
+        "T1070",
+        "T1070.001",
+        "T1562",
+        "T1562.001",
+        "T1089"
+      ],
+      "tecnicas_en_dataset": {
+        "T1070": 13,
+        "T1070.001": 1,
+        "T1562": 1,
+        "T1562.001": 10,
+        "T1089": 1
+      },
+      "casos_en_dataset": 26,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "no hay evidencia que borrar"
+        },
+        "static": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "inunda el registro para expulsar el evento que lo delató"
+        },
+        "maze": {
+          "desenlace": "contenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": true,
+          "nota": "inunda el registro para expulsar el evento que lo delató"
+        }
+      }
+    },
+    {
+      "id": "V9",
+      "vector": "Escalar con identidad aportada por el cliente",
+      "tecnicas": [
+        "T1548",
+        "T1548.002",
+        "T1088"
+      ],
+      "tecnicas_en_dataset": {
+        "T1088": 1
+      },
+      "casos_en_dataset": 1,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "inventa identidades, parámetros y rutas para escalar"
+        },
+        "static": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "inventa identidades, parámetros y rutas para escalar"
+        },
+        "maze": {
+          "desenlace": "detectado",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": true,
+          "sesion_revocada": false,
+          "nota": "inventa identidades, parámetros y rutas para escalar"
+        }
+      }
+    },
+    {
+      "id": "V10",
+      "vector": "Tumbar a un tercero con un señuelo filtrado",
+      "tecnicas": [
+        "T1531",
+        "T1499"
+      ],
+      "tecnicas_en_dataset": {},
+      "casos_en_dataset": 0,
+      "niveles": {
+        "control": {
+          "desenlace": "prevenido",
+          "objetivo_logrado": false,
+          "terceros_intactos": true,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "no hay señuelo ajeno que usar"
+        },
+        "static": {
+          "desenlace": "no_cubierto",
+          "objetivo_logrado": false,
+          "terceros_intactos": false,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "usa un señuelo filtrado de alice para que la revoquen a ella"
+        },
+        "maze": {
+          "desenlace": "no_cubierto",
+          "objetivo_logrado": false,
+          "terceros_intactos": false,
+          "sesion_marcada": false,
+          "sesion_revocada": false,
+          "nota": "usa un señuelo filtrado de alice para que la revoquen a ella"
+        }
+      }
+    }
+  ],
+  "resumen": {
+    "control": {
+      "vectores": {
+        "contenido": 0,
+        "detectado": 0,
+        "prevenido": 10,
+        "no_cubierto": 0
+      },
+      "casos_del_dataset": {
+        "contenido": 0,
+        "detectado": 0,
+        "prevenido": 157,
+        "no_cubierto": 0
+      }
+    },
+    "static": {
+      "vectores": {
+        "contenido": 6,
+        "detectado": 3,
+        "prevenido": 0,
+        "no_cubierto": 1
+      },
+      "casos_del_dataset": {
+        "contenido": 69,
+        "detectado": 88,
+        "prevenido": 0,
+        "no_cubierto": 0
+      }
+    },
+    "maze": {
+      "vectores": {
+        "contenido": 6,
+        "detectado": 3,
+        "prevenido": 0,
+        "no_cubierto": 1
+      },
+      "casos_del_dataset": {
+        "contenido": 69,
+        "detectado": 88,
+        "prevenido": 0,
+        "no_cubierto": 0
+      }
+    }
+  },
+  "cobertura": {
+    "casos": 1000,
+    "tecnicas": 193,
+    "tacticas": {
+      "C2": 100,
+      "Collection": 100,
+      "Discovery": 100,
+      "Evasion": 100,
+      "Execution": 100,
+      "Exfil": 100,
+      "Lateral Movement": 100,
+      "Persistence": 100,
+      "Privilege Escalation": 100,
+      "Recon": 100
+    },
+    "casos_aplicables": 157,
+    "tecnicas_aplicables": 30,
+    "casos_fuera_de_alcance": 843
+  }
+}

@@ -45,9 +45,9 @@ class Reloj:
         return self.t
 
 
-def _mundo(nivel):
+def _mundo(nivel, umbral=None):
     reloj = Reloj()
-    lab = Lab(nivel, clock=reloj, ttl=120, max_steps=8)
+    lab = Lab(nivel, clock=reloj, ttl=120, max_steps=8, probe_threshold=umbral)
     return lab, reloj, lab.credentials["visitor"]
 
 
@@ -161,8 +161,8 @@ VECTORES = (
 )
 
 
-def correr_vector(guion, nivel):
-    lab, reloj, visitor = _mundo(nivel)
+def correr_vector(guion, nivel, umbral=None):
+    lab, reloj, visitor = _mundo(nivel, umbral)
     logrado, nota = guion(lab, reloj, visitor)
     foto = lab.snapshot()
     origen = foto["sessions"]["session-visitor"]
@@ -193,13 +193,13 @@ def leer_dataset(ruta):
     return {"casos": len(casos), "tecnicas": dict(tecnicas), "tacticas": dict(tacticas)}
 
 
-def evaluar(dataset=None):
+def evaluar(dataset=None, umbral=None):
     filas = []
     for ident, nombre, tecnicas, guion in VECTORES:
         citadas = {t: dataset["tecnicas"][t] for t in tecnicas if dataset and t in dataset["tecnicas"]}
         filas.append({"id": ident, "vector": nombre, "tecnicas": list(tecnicas), "tecnicas_en_dataset": citadas,
                       "casos_en_dataset": sum(citadas.values()) if dataset else None,
-                      "niveles": {nivel: correr_vector(guion, nivel) for nivel in Lab.MODES}})
+                      "niveles": {nivel: correr_vector(guion, nivel, umbral) for nivel in Lab.MODES}})
     resumen = {}
     for nivel in Lab.MODES:
         cuenta = Counter(f["niveles"][nivel]["desenlace"] for f in filas)
@@ -215,7 +215,7 @@ def evaluar(dataset=None):
         cobertura = {"casos": dataset["casos"], "tecnicas": len(dataset["tecnicas"]), "tacticas": dataset["tacticas"],
                      "casos_aplicables": sum(aplican.values()), "tecnicas_aplicables": len(aplican),
                      "casos_fuera_de_alcance": dataset["casos"] - sum(aplican.values())}
-    return {"vectores": filas, "resumen": resumen, "cobertura": cobertura}
+    return {"umbral_de_sondas": umbral, "vectores": filas, "resumen": resumen, "cobertura": cobertura}
 
 
 def tabla_markdown(resultado):
@@ -243,12 +243,14 @@ def tabla_markdown(resultado):
 def main():
     p = argparse.ArgumentParser(description="Vectores de riesgo de CyberSecEval/MITRE contra el laboratorio local")
     p.add_argument("--dataset", help="mitre_benchmark_100_per_category_with_augmentation.json de PurpleLlama")
+    p.add_argument("--umbral", type=int, default=None,
+                   help="K negativas seguidas marcan la sesión sin revocarla (Lab(probe_threshold=K)); por defecto, apagado")
     p.add_argument("--out", default="evaluation/vectores")
     args = p.parse_args()
     for flujo in (sys.stdout, sys.stderr):
         if hasattr(flujo, "reconfigure"):
             flujo.reconfigure(errors="replace")
-    resultado = evaluar(leer_dataset(args.dataset) if args.dataset else None)
+    resultado = evaluar(leer_dataset(args.dataset) if args.dataset else None, args.umbral)
     resultado = {"version": "0.4", "creado_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                  "tipo": "vectores_deterministas_laboratorio_local",
                  "fuente": "CyberSecEval (Purple Llama), conjunto MITRE: solo etiquetas de técnica" if args.dataset else None,

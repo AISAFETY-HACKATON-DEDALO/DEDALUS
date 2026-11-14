@@ -139,7 +139,10 @@ class Modelo:
             except ErrorProveedor as e:
                 if e.codigo in (400, 422) and self._ajustar(str(e)):
                     continue
-                if (e.codigo is None or e.codigo in REINTENTABLES) and fallos < self.reintentos:
+                # Algunos modelos intentan llamar una herramienta nativa que nadie declaró y el proveedor
+                # rechaza esa generación con un 400. Es una salida fallida, no una solicitud mal hecha: se repite.
+                generacion_fallida = e.codigo == 400 and "called a tool" in str(e)
+                if (e.codigo is None or e.codigo in REINTENTABLES or generacion_fallida) and fallos < self.reintentos:
                     fallos += 1
                     try:
                         espera = float(e.espera)
