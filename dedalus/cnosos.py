@@ -60,6 +60,14 @@ INTENTOS = {
     "token_forjado": "Token forjado o desconocido",
 }
 
+# Desvío: el ataque mismo es el cebo. Ningún usuario honesto escribe una inyección, un ../ ni se
+# inventa un rol: una sola vez basta. Pedir un documento ajeno o entrar a administración puede ser
+# un error: hace falta repetirlo (el umbral) para que cuente.
+INEQUIVOCOS = frozenset({"inyeccion_sql", "recorrido", "manipulacion_rol"})
+AMBIGUOS = frozenset({"idor", "escalada", "exposicion_config"})
+# Un apóstrofo solo no es un ataque (O'Brien): para desviar a la primera hace falta sintaxis de inyección.
+SQL_FUERTE = re.compile(r"(--|;|/\*|\bunion\b|\bselect\b|\bor\b\s+\S+\s*=|\bdrop\b|\bsleep\s*\()", re.I)
+
 
 @dataclass
 class Sesion:
@@ -78,6 +86,7 @@ class Sesion:
     raiz: str | None = None          # en el laberinto: la hiedra por la que entró
     creada: float = 0.0
     intentos: Counter = field(default_factory=Counter)
+    dudas: int = 0                   # intentos ambiguos acumulados (para el desvío)
     primer_intento: int | None = None
 
 
@@ -95,10 +104,15 @@ class Cnosos:
     RESPUESTAS = ("contener", "observar")
 
     def __init__(self, almacen=None, respuesta="contener", pasos_laberinto=40, vigencia=600, inyeccion=False,
-                 clock=time.monotonic, semilla=None):
+                 clock=time.monotonic, semilla=None, desvio=None):
         if (respuesta not in self.RESPUESTAS or type(pasos_laberinto) is not int or not 1 <= pasos_laberinto <= 100
-                or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600):
+                or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600
+                or not (desvio is None or (type(desvio) is int and 1 <= desvio <= 20))):
             raise ValueError("Configuración inválida")
+        # desvio=K: una sesión que ataca pasa al laberinto sin necesidad de tocar una hiedra. Un intento
+        # inequívoco basta; de los ambiguos hacen falta K. Apagado por defecto: nada cambia.
+        self.desvio = desvio
+        self.desviadas = {}              # token real -> token de la sesión sombra en el laberinto
         self.respuesta, self.pasos_laberinto, self.vigencia = respuesta, pasos_laberinto, vigencia
         self.inyeccion, self.clock = bool(inyeccion), clock
         self.lock = threading.RLock()
@@ -178,7 +192,7 @@ class Cnosos:
             n, t0 = self.n, time.perf_counter()
             ctx = {"intento": None, "hiedra": None, "accion": None, "afectada": None}
             sesion, estado, datos = self._atender(metodo, ruta, cabeceras, cuerpo, n, ctx)
-            if ctx["intento"] and sesion is not None:
+            if ctx["intento"] and sesion is not None and not ctx.get("contado"):
                 sesion.intentos[ctx["intento"]] += 1
                 if sesion.primer_intento is None:
                     sesion.primer_intento = n
@@ -249,6 +263,9 @@ class Cnosos:
             if token:
                 ctx["intento"] = "token_forjado"
             return None, 401, {"error": "no_autenticado"}
+        if token in self.desviadas:      # desviada: su token sigue «funcionando», pero ya solo ve el laberinto
+            sombra = self.sesiones[self.desviadas[token]]
+            return sombra, *self._laberinto(sombra, camino, metodo, q)
         if sesion.revocada:
             return sesion, 401, {"error": "sesion_expirada"}
         if sesion.laberinto:
@@ -256,7 +273,35 @@ class Cnosos:
         estado, datos = self._ruta(sesion, metodo, camino, q, ctx)
         if any(c in cab for c in CABECERAS_ROL):
             ctx["intento"] = "manipulacion_rol"     # se anota y se ignora: el rol sale de la sesión
+        if self.desvio and ctx["intento"]:
+            sombra = self._desviar(sesion, token, n, ctx, unquote(ruta))
+            if sombra is not None:       # el ataque «funciona»: esta misma solicitud ya la responde el laberinto
+                return sombra, *self._laberinto(sombra, camino, metodo, q)
         return sesion, estado, datos
+
+    def _desviar(self, sesion, token, n, ctx, crudo=""):
+        """Contención sin cebo. Decide el servidor, con los intentos de ESA sesión: nadie desvía a otro."""
+        intento = ctx["intento"]
+        sesion.intentos[intento] += 1
+        if sesion.primer_intento is None:
+            sesion.primer_intento = n
+        ctx["contado"] = True
+        inequivoco = intento in INEQUIVOCOS and (intento != "inyeccion_sql" or bool(SQL_FUERTE.search(crudo)))
+        sesion.dudas += not inequivoco
+        if not inequivoco and sesion.dudas < self.desvio:
+            return None
+        sesion.marcada = True
+        ctx["afectada"] = sesion.ref
+        if self.respuesta != "contener":
+            ctx["accion"] = "observado"
+            return None
+        sesion.revocada, sesion.revocada_en = True, n
+        sombra = self._nueva_sesion(sesion.usuario, sesion.rol, laberinto=True, origen=sesion.ref,
+                                    uid=sesion.uid, departamento=sesion.departamento)
+        self.sesiones[sombra].raiz = f"desvio-{sesion.ref}"
+        self.desviadas[token] = sombra
+        ctx["accion"] = "desvio"
+        return self.sesiones[sombra]
 
     def _login(self, cuerpo, n, ctx):
         try:
@@ -391,6 +436,8 @@ class Cnosos:
             return 401, {"error": "sesion_expirada"}
         if metodo not in ("GET", "POST"):
             return 405, {"error": "metodo"}
+        if camino == "/api/perfil" and s.uid and str(s.raiz).startswith("desvio-"):
+            return self._ruta(s, "GET", camino, {}, {})     # su propio perfil sigue igual: no delata el cambio
         estado, datos, ms = self.laberinto.responder(s.raiz, s.nivel, camino, q or {})
         self.costo_laberinto_ms += ms
         if isinstance(datos, dict) and str(datos.get("llave", "")).startswith("cn_live_"):
@@ -454,7 +501,8 @@ class Cnosos:
                                  "intentos": dict(s.intentos), "pasos": s.pasos, "nivel": s.nivel})
             return {"episodio": self.episodio, "organizacion": ORGANIZACION, "almacen": self.almacen.motor,
                     "errores_registro": self.errores_registro,
-                    "respuesta": self.respuesta, "eventos": self.n, "fugas": self.fugas,
+                    "respuesta": self.respuesta, "desvio": self.desvio, "desviadas": len(self.desviadas),
+                    "eventos": self.n, "fugas": self.fugas,
                     "laberinto": {"pasos": sum(self.pasos_raiz.values()), "costo_ms": round(self.costo_laberinto_ms, 3),
                                   "nivel_max": max([x.nivel for x in self.sesiones.values() if x.laberinto] or [0])},
                     "sesiones": sesiones,
