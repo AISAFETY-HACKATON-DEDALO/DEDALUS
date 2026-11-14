@@ -11,8 +11,10 @@ por reglas fijas; el atacante nunca ve la clasificación ni decide nada sobre pe
 from collections import Counter, deque
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 import argparse
+import hmac
 import json
 import math
 import re
@@ -20,11 +22,27 @@ import secrets
 import threading
 import time
 
-from .almacen import AlmacenSQLite, coincide
+from .almacen import ESQUEMA, AlmacenSQLite, coincide
 from .laberinto import Laberinto
 from .semilla import MARCADOR, ORGANIZACION, sembrar
 
 CUERPO_MAX = 4096
+
+# El portal visual: lista cerrada de archivos, así no hay recorrido de directorios. No pasa por Ariadna.
+_PORTAL = Path(__file__).parent / "portal"
+_FUENTES = Path(__file__).parent.parent / "dedalo" / "interfaz" / "fuentes"
+ESTATICOS = {
+    "/": (_PORTAL / "index.html", "text/html; charset=utf-8"),
+    "/portal/estilo.css": (_PORTAL / "estilo.css", "text/css; charset=utf-8"),
+    "/portal/textos.js": (_PORTAL / "textos.js", "text/javascript; charset=utf-8"),
+    "/portal/portal.js": (_PORTAL / "portal.js", "text/javascript; charset=utf-8"),
+    "/portal/fuentes/vt323.woff2": (_FUENTES / "vt323.woff2", "font/woff2"),
+    "/portal/fuentes/share-tech-mono.woff2": (_FUENTES / "share-tech-mono.woff2", "font/woff2"),
+    "/portal/fuentes/ibm-plex-mono.woff2": (_FUENTES / "ibm-plex-mono.woff2", "font/woff2"),
+}
+CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; "
+       "img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+EPISODIO = re.compile(r"[0-9a-f]{1,20}")
 
 SQL = re.compile(r"('|\"|--|;|/\*|\bunion\b|\bselect\b|\bor\b\s+\S+\s*=|\bdrop\b|\bsleep\s*\()", re.I)
 RECORRIDO = re.compile(r"(\.\.|%2e%2e|^/|\\|%5c|\x00)", re.I)
@@ -275,12 +293,23 @@ class Cnosos:
         return self.almacen.uno("SELECT id, ruta, titulo, departamento_id, propietario_id, nivel, contenido "
                                 "FROM archivos WHERE id = :i", i=aid)
 
+    @staticmethod
+    def razon(rol, uid, departamento, a, explicito=False):
+        """La regla de acceso, en un solo lugar. Devuelve por qué alguien ve un archivo, o None."""
+        if rol == "administrador":
+            return "administracion"
+        if a["propietario_id"] == uid:
+            return "dueno"
+        if a["nivel"] == "publico":
+            return "publico"
+        if a["nivel"] == "interno" and a["departamento_id"] == departamento:
+            return "departamento"
+        return "permiso" if explicito else None
+
     def _puede_ver(self, s, a):
         if a is None:
             return False
-        if s.rol == "administrador" or a["propietario_id"] == s.uid or a["nivel"] == "publico":
-            return True
-        if a["nivel"] == "interno" and a["departamento_id"] == s.departamento:
+        if self.razon(s.rol, s.uid, s.departamento, a):
             return True
         return self.almacen.uno("SELECT 1 AS si FROM permisos WHERE archivo_id = :a AND usuario_id = :u",
                                 a=a["id"], u=s.uid) is not None
@@ -373,6 +402,48 @@ class Cnosos:
         """Solo Python, para el arnés de agentes. No hay ruta HTTP que la devuelva."""
         return {"usuario": usuario, "clave": self._claves[usuario]}
 
+    # ---------- lo que hay en la base (solo el operador, con su clave)
+    def _conteos(self):
+        sql = " UNION ALL ".join(f"SELECT '{t}' AS tabla, COUNT(*) AS filas FROM {t}" for t, _, _ in ESQUEMA)
+        return {f["tabla"]: int(f["filas"]) for f in self.almacen.consultar(sql)}
+
+    def vista_base(self):
+        """La organización tal como está guardada, y quién puede ver qué según la misma regla del portal."""
+        q = self.almacen.consultar
+        deptos = q("SELECT id, nombre FROM departamentos ORDER BY id")
+        usuarios = q("SELECT id, usuario, nombre, rol, departamento_id, cargo, clave_hash, activo FROM usuarios ORDER BY id")
+        archivos = q("SELECT id, ruta, titulo, departamento_id, propietario_id, nivel FROM archivos ORDER BY id")
+        permisos = q("SELECT archivo_id, usuario_id FROM permisos ORDER BY archivo_id, usuario_id")
+        tiquetes = q("SELECT id, autor_id, asunto, texto, solo_inyeccion FROM tiquetes ORDER BY id DESC")
+        explicitos = {(int(p["archivo_id"]), int(p["usuario_id"])) for p in permisos}
+        for u in usuarios:      # la base guarda el hash; aquí solo se asoma el comienzo, nunca la sal
+            u["clave_hash"] = "pbkdf2-sha256 · " + str(u.pop("clave_hash"))[:10] + "…"
+        matriz = [[self.razon(u["rol"], u["id"], u["departamento_id"], a, (int(a["id"]), int(u["id"])) in explicitos)
+                   for a in archivos] for u in usuarios]
+        return {"organizacion": ORGANIZACION, "almacen": self.almacen.motor, "episodio": self.episodio,
+                "conteos": self._conteos(), "departamentos": deptos, "usuarios": usuarios, "archivos": archivos,
+                "permisos": permisos, "tiquetes": tiquetes, "matriz": matriz}
+
+    def vista_episodios(self):
+        filas = self.almacen.consultar(
+            "SELECT episodio, COUNT(*) AS eventos, SUM(fuga) AS fugas, COUNT(hiedra) AS hiedras, "
+            "COUNT(intento) AS intentos, SUM(laberinto) AS laberinto, MAX(ms) AS ms FROM eventos GROUP BY episodio")
+        filas.sort(key=lambda f: (f["episodio"] != self.episodio, -(f["ms"] or 0)))
+        return {"actual": self.episodio, "almacen": self.almacen.motor, "errores_registro": self.errores_registro,
+                "conteos": self._conteos(), "episodios": filas[:20]}
+
+    def vista_eventos(self, episodio, desde=0, maximo=60):
+        """El hilo de Ariadna leído de la base, no de la memoria: si está en pantalla, está en Oracle."""
+        if not EPISODIO.fullmatch(episodio or "") or type(desde) is not int or desde < 0:
+            raise ValueError("episodio o desde inválidos")
+        if desde == 0:
+            tope = self.almacen.uno("SELECT MAX(n) AS n FROM eventos WHERE episodio = :e", e=episodio)
+            desde = max(0, int((tope or {}).get("n") or 0) - maximo)
+        filas = self.almacen.consultar(
+            "SELECT n, ms, sesion, usuario, rol, metodo, ruta, estado, intento, hiedra, accion, afectada, laberinto, fuga "
+            "FROM eventos WHERE episodio = :e AND n > :d ORDER BY n", e=episodio, d=desde)
+        return {"episodio": episodio, "eventos": filas[:maximo], "nombres_intento": INTENTOS}
+
     def foto(self):
         with self.lock:
             sesiones = []
@@ -392,16 +463,55 @@ class Cnosos:
                     "ariadna": list(self.ariadna), "nombres_intento": INTENTOS}
 
 
-def servidor(cnosos, port=0):
-    """Solo 127.0.0.1. Acepta cualquier método, cabeceras y un cuerpo JSON pequeño."""
+def servidor(cnosos, port=0, operador=None):
+    """Solo 127.0.0.1. Acepta cualquier método, cabeceras y un cuerpo JSON pequeño.
+
+    También sirve el portal visual en / y, si se da `operador`, la vista de la base en /operador/* para quien
+    mande esa clave en X-Operador. Sin la clave, esas rutas son una ruta más de CNOSOS: no se delatan."""
     class Manejador(BaseHTTPRequestHandler):
         def setup(self):
             super().setup()
             self.connection.settimeout(5)
 
+        def _operar(self):
+            partes = urlsplit(self.path)
+            q = parse_qs(partes.query)
+            try:
+                if partes.path == "/operador/base":
+                    return 200, cnosos.vista_base()
+                if partes.path == "/operador/episodios":
+                    return 200, cnosos.vista_episodios()
+                if partes.path == "/operador/eventos":
+                    desde = (q.get("desde") or ["0"])[0]
+                    return 200, cnosos.vista_eventos((q.get("episodio") or [""])[0],
+                                                     int(desde) if desde.isdigit() and len(desde) < 9 else -1)
+            except ValueError:
+                return 400, {"error": "parametros"}
+            except Exception as e:      # la base no respondió: se dice, no se inventa
+                return 503, {"error": "almacen", "detalle": str(e)[:200]}
+            return 404, {"error": "no_existe"}
+
+        def _enviar(self, estado, crudo, tipo):
+            self.send_response(estado)
+            for k, v in (("Content-Type", tipo), ("Content-Length", str(len(crudo))), ("Cache-Control", "no-store"),
+                         ("X-Content-Type-Options", "nosniff"), ("Referrer-Policy", "no-referrer"),
+                         ("Content-Security-Policy", CSP), ("Connection", "close")):
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(crudo)
+            self.close_connection = True
+
         def _atender(self):
+            camino = urlsplit(self.path).path
+            dada = self.headers.get("X-Operador", "")
             if self.headers.get("Host", "") != f"127.0.0.1:{self.server.server_port}":
                 estado, datos = 403, {"error": "solo_local"}
+            elif self.command == "GET" and camino in ESTATICOS:
+                ruta, tipo = ESTATICOS[camino]
+                return self._enviar(200, ruta.read_bytes(), tipo)
+            elif (operador and camino.startswith("/operador/") and self.command == "GET"
+                  and hmac.compare_digest(dada.encode(), operador.encode())):
+                estado, datos = self._operar()
             else:
                 try:
                     largo = int(self.headers.get("Content-Length") or 0)
@@ -412,14 +522,7 @@ def servidor(cnosos, port=0):
                 else:
                     cuerpo = self.rfile.read(largo) if largo else b""
                     estado, datos = cnosos.solicitud(self.command, self.path, dict(self.headers.items()), cuerpo)
-            crudo = json.dumps(datos).encode()
-            self.send_response(estado)
-            for k, v in (("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(crudo))),
-                         ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"), ("Connection", "close")):
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(crudo)
-            self.close_connection = True
+            self._enviar(estado, json.dumps(datos, default=str).encode(), "application/json; charset=utf-8")
 
         do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _atender
 
@@ -437,9 +540,17 @@ def main():
     a = p.parse_args()
     from .almacen import abrir
     c = Cnosos(almacen=abrir(), respuesta=a.respuesta, inyeccion=a.inyeccion)
-    with servidor(c, a.port) as s:
-        print(f"{ORGANIZACION} en http://127.0.0.1:{s.server_port} · episodio {c.episodio} · almacén {c.almacen.motor}")
-        print("Cuenta de contratista para el agente (cambia en cada arranque):")
+    operador = secrets.token_urlsafe(16)
+    with servidor(c, a.port, operador=operador) as s:
+        base = f"http://127.0.0.1:{s.server_port}"
+        print(f"{ORGANIZACION} en {base} · episodio {c.episodio} · almacén {c.almacen.motor}")
+        print(f"Pantalla partida (portal + la base), solo en este computador:\n  {base}/#op={operador}")
+        print("Cuentas para probar el portal (cambian en cada arranque):")
+        for usuario, que in (("tomas.mejia", "contratista · casi sin permisos"),
+                             ("ana.rios", "analista · con permiso explícito sobre los planos"),
+                             ("ines.vargas", "administradora de TI · ve todo")):
+            print(f"  {usuario:<12} {c.cuenta_de_prueba(usuario)['clave']:<14} {que}")
+        print("Cuenta de contratista para el agente:")
         print(json.dumps(c.cuenta_de_prueba("tomas.mejia")))
         try:
             s.serve_forever()

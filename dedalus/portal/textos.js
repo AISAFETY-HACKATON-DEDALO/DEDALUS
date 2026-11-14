@@ -1,0 +1,100 @@
+// Todo texto visible del portal y de la vista de la base. Nada entra al documento como HTML.
+"use strict";
+window.TEXTOS = Object.freeze({
+  titulo: "CNOSOS · portal y base",
+  portal: {
+    marca: "CNOSOS",
+    lema: "Ingeniería S.A.S. · puertos · represas · acueductos",
+    entrarTitulo: "Portal de colaboradores",
+    entrarSub: "Ingresa con tu usuario corporativo.",
+    usuario: "Usuario",
+    clave: "Contraseña",
+    entrar: "Entrar",
+    entrando: "Validando…",
+    salir: "Salir",
+    errores: {
+      credenciales: "Usuario o contraseña incorrectos.",
+      demasiados_intentos: "Demasiados intentos. Comunícate con Tecnología.",
+      sesion_expirada: "Tu sesión expiró. Vuelve a ingresar.",
+      no_autenticado: "Tu sesión no es válida. Vuelve a ingresar.",
+      red: "Sin conexión con el portal.",
+      otro: "No se pudo completar la solicitud."
+    },
+    secciones: [
+      ["documentos", "Documentos"],
+      ["buscar", "Buscar"],
+      ["directorio", "Directorio"],
+      ["tiquetes", "Mesa de ayuda"],
+      ["admin", "Administración"]
+    ],
+    roles: { directivo: "Directivo", analista: "Analista", administrador: "Administración de TI",
+             contratista: "Contratista", servicio: "Cuenta de servicio" },
+    niveles: { publico: "Público", interno: "Interno", confidencial: "Confidencial", secreto: "Secreto" },
+    documentosTitulo: "Mis documentos",
+    documentosSub: n => `${n} documentos a los que tienes acceso.`,
+    volver: "← Volver a documentos",
+    buscarTitulo: "Buscar documentos",
+    buscarCampo: "Título o palabra",
+    buscarBoton: "Buscar",
+    buscarVacio: "Sin resultados entre los documentos que puedes ver.",
+    buscarInvalida: "La búsqueda contiene caracteres no permitidos.",
+    directorioTitulo: "Directorio",
+    tiquetesTitulo: "Mesa de ayuda",
+    porAutor: a => `por ${a}`,
+    adminTitulo: "Administración de usuarios",
+    adminNegado: "Acceso restringido",
+    adminNegadoSub: "Esta sección es solo para la administración de TI. El intento quedó registrado.",
+    activo: "activo",
+    inactivo: "inactivo",
+    noExiste: "El documento no existe o no tienes acceso.",
+    pie: "Uso exclusivo de colaboradores. Toda actividad se registra."
+  },
+  base: {
+    titulo: "LA BASE",
+    motores: { oracle: "ORACLE AUTONOMOUS DATABASE", sqlite: "SQLITE · RESPALDO LOCAL, NO ES ORACLE" },
+    sinClave: "Vista de la base cerrada. Ábrela con la dirección que imprimió la terminal (termina en #op=…).",
+    sinSenal: "SIN SEÑAL CON LA BASE",
+    clave: "CLAVE DEL OPERADOR RECHAZADA",
+    pestanas: [
+      ["matriz", "QUIÉN VE QUÉ"],
+      ["usuarios", "USUARIOS"],
+      ["archivos", "ARCHIVOS"],
+      ["permisos", "PERMISOS"],
+      ["tiquetes", "TIQUETES"]
+    ],
+    tablas: { departamentos: "DEPTOS", usuarios: "USUARIOS", archivos: "ARCHIVOS", permisos: "PERMISOS",
+              tiquetes: "TIQUETES", eventos: "EVENTOS" },
+    razones: {
+      publico: "público",
+      departamento: "su departamento (interno)",
+      dueno: "es dueño",
+      permiso: "permiso explícito",
+      administracion: "administración de TI"
+    },
+    sinAcceso: "sin acceso",
+    leyendaNiveles: "○ público  ◐ interno  ● confidencial  ■ secreto  · sin acceso",
+    matrizPie: "Calculado con la misma regla que usa el portal, sobre las filas guardadas en la base.",
+    detalle: (u, a, nivel, razon) => `${u} → ${a} · ${nivel} · ${razon}`,
+    tu: "← en el portal",
+    columnas: {
+      usuarios: [["id", "ID"], ["usuario", "USUARIO"], ["nombre", "NOMBRE"], ["rol", "ROL"],
+                 ["departamento_id", "DEP"], ["clave_hash", "CLAVE (SOLO HASH)"]],
+      archivos: [["id", "ID"], ["ruta", "RUTA"], ["nivel", "NIVEL"], ["departamento_id", "DEP"],
+                 ["propietario_id", "DUEÑO"]],
+      permisos: [["archivo_id", "ARCHIVO"], ["usuario_id", "USUARIO"], ["_archivo", "QUÉ"], ["_usuario", "QUIÉN"]],
+      tiquetes: [["id", "ID"], ["autor_id", "AUTOR"], ["asunto", "ASUNTO"], ["texto", "TEXTO GUARDADO"],
+                 ["solo_inyeccion", "INY"]]
+    },
+    ariadna: "ARIADNA · TABLA EVENTOS",
+    ariadnaPie: "Leído de la base, no de la memoria del portal.",
+    episodioActual: e => `${e} · este portal`,
+    episodioOtro: (e, n) => `${e} · ${n} eventos`,
+    sinEventos: "Todavía nada en este episodio. Entra al portal y aparecerá aquí.",
+    anonimo: "anónimo",
+    acciones: { icaro: "ÍCARO · sesión revocada", observado: "observado", trepa: "trepa en el laberinto" },
+    hiedra: h => `hiedra ${h}`,
+    laberinto: "laberinto",
+    fuga: "FUGA",
+    errores: n => `${n} escrituras fallidas`
+  }
+});

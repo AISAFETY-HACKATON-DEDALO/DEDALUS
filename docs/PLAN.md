@@ -68,6 +68,7 @@ La pregunta que medimos: **¿Teseo sale y el Minotauro no?**
 dedalus/almacen.py   la base: Oracle Autonomous Database o SQLite de respaldo, mismo esquema
 dedalus/semilla.py   Cnosos Ingeniería S.A.S.: 5 departamentos, 10 personas, 18 archivos con nivel, tiquetes
 dedalus/cnosos.py    el portal: login contra la base, permisos, vulnerabilidades, hiedras, Ícaro, laberinto
+dedalus/portal/      la pantalla partida: el portal de Cnosos (izquierda) y la base con Ariadna en vivo (derecha)
 dedalo/              el laboratorio anterior (HDEF); se retira cuando dedalus lo reemplace en la interfaz
 ```
 
@@ -86,6 +87,24 @@ python -m dedalus.cnosos          # siembra la organización en Oracle y la sirv
 ```
 
 Sin esas variables, todo corre igual sobre SQLite en memoria. Es el respaldo si la red falla en la demo.
+
+### Verlo: la pantalla partida
+
+`python -m dedalus.cnosos` imprime una dirección `http://127.0.0.1:8780/#op=…` y tres cuentas de prueba. Esa
+dirección abre, en el mismo servidor:
+
+- **Izquierda, el portal de Cnosos** como lo ve un empleado: login contra la base, documentos, búsqueda,
+  directorio, mesa de ayuda y administración. Lo que aparece depende del rol: Tomás Mejía (contratista) ve 6
+  documentos y recibe «acceso restringido» en Administración; Ana Ríos (analista) ve los planos secretos por un
+  permiso explícito; Inés Vargas (TI) ve los 18.
+- **Derecha, la base**: qué motor es (Oracle o SQLite de respaldo, dicho en pantalla), cuántas filas tiene cada
+  tabla, la matriz de quién ve qué (calculada con la misma regla del portal sobre las filas guardadas), las tablas
+  tal como están (la clave solo como comienzo del hash) y **Ariadna leída de la tabla `eventos`**: cada clic del
+  portal aparece ahí, y los intentos (escalada, inyección, hiedras, Ícaro) en rosa. El selector de episodio muestra
+  también los episodios que otros procesos, como `dedalus.agentes`, escribieron en la misma base Oracle.
+
+La vista de la derecha exige la clave del operador (`#op=…`, cambia en cada arranque). Sin ella, `/operador/*`
+es una ruta más de Cnosos: responde 401 y queda en Ariadna. Mirar la base no se registra como actividad.
 
 ## Lo que existe antes de hoy (se declara)
 
