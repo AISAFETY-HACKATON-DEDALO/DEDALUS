@@ -31,6 +31,7 @@ ESQUEMA = (
                  ("hiedra", "t", 20), ("accion", "t", 20), ("afectada", "t", 20), ("laberinto", "n", 0),
                  ("fuga", "n", 0)], "episodio, n"),
 )
+ORGANIZACION_TABLAS = tuple(t for t, _, _ in ESQUEMA if t != "eventos")
 ITERACIONES = 60_000
 
 
@@ -52,11 +53,12 @@ class Almacen:
     def _tipo(self, tipo, largo):
         raise NotImplementedError
 
-    def ddl(self):
+    def ddl(self, tablas=None):
         sentencias = []
         for tabla, columnas, clave in ESQUEMA:
-            cols = ", ".join(f"{c} {self._tipo(t, l)}" for c, t, l in columnas)
-            sentencias.append(f"CREATE TABLE {tabla} ({cols}, PRIMARY KEY ({clave}))")
+            if tablas is None or tabla in tablas:
+                cols = ", ".join(f"{c} {self._tipo(t, l)}" for c, t, l in columnas)
+                sentencias.append(f"CREATE TABLE {tabla} ({cols}, PRIMARY KEY ({clave}))")
         return sentencias
 
     def consultar(self, sql, **binds):
@@ -97,10 +99,12 @@ class AlmacenSQLite(Almacen):
         return "TEXT" if tipo == "t" else "INTEGER"
 
     def reiniciar(self):
+        """Recrea la organización. La tabla eventos (Ariadna) se conserva: acumula todos los episodios."""
         with self.candado:
-            for tabla, _, _ in reversed(ESQUEMA):
+            for tabla in ORGANIZACION_TABLAS[::-1]:
                 self.con.execute(f"DROP TABLE IF EXISTS {tabla}")
-            for s in self.ddl():
+            existe = self.con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'eventos'").fetchone()
+            for s in self.ddl(ORGANIZACION_TABLAS + (() if existe else ("eventos",))):
                 self.con.execute(s)
             self.con.commit()
 
@@ -121,15 +125,18 @@ class AlmacenOracle(Almacen):
         return f"VARCHAR2({largo} CHAR)" if tipo == "t" else "NUMBER(12)"
 
     def reiniciar(self):
+        """Recrea la organización. La tabla eventos (Ariadna) se conserva: acumula todos los episodios."""
         with self.candado:
             cur = self.con.cursor()
-            for tabla, _, _ in reversed(ESQUEMA):
+            for tabla in ORGANIZACION_TABLAS[::-1]:
                 try:
                     cur.execute(f"DROP TABLE {tabla} PURGE")
                 except Exception as e:      # ORA-00942: la tabla no existía
                     if "ORA-00942" not in str(e):
                         raise
-            for s in self.ddl():
+            cur.execute("SELECT COUNT(*) FROM user_tables WHERE table_name = 'EVENTOS'")
+            existe = cur.fetchone()[0] > 0
+            for s in self.ddl(ORGANIZACION_TABLAS + (() if existe else ("eventos",))):
                 cur.execute(s)
             self.con.commit()
 

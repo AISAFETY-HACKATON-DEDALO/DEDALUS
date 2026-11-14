@@ -204,6 +204,20 @@ class Almacen(unittest.TestCase):
         for clave in c._claves.values():
             self.assertNotIn(clave, str(filas))
 
+    def test_ariadna_sobrevive_a_un_nuevo_episodio(self):
+        from dedalus.almacen import AlmacenSQLite
+        a = AlmacenSQLite()
+        try:
+            c1 = Cnosos(almacen=a)
+            c1.solicitud("GET", "/api/salud")
+            c2 = Cnosos(almacen=a)                                 # resiembra la organización en la misma base
+            c2.solicitud("GET", "/api/salud")
+            episodios = {f["episodio"] for f in a.consultar("SELECT episodio FROM eventos")}
+            self.assertEqual(episodios, {c1.episodio, c2.episodio})
+            self.assertEqual(len(a.consultar("SELECT id FROM usuarios")), 10)
+        finally:
+            a.cerrar()
+
     def test_tipos_oracle(self):
         self.assertEqual([AlmacenOracle._tipo(None, t, n) for t, n in (("t", 40), ("n", 0))],
                          ["VARCHAR2(40 CHAR)", "NUMBER(12)"])
