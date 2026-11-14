@@ -218,6 +218,37 @@ class Almacen(unittest.TestCase):
         finally:
             a.cerrar()
 
+    def test_oracle_por_https_arma_la_solicitud_y_lee_la_respuesta(self):
+        import io
+        from dedalus.almacen import AlmacenOracleREST
+        vistas = []
+
+        class Respuesta(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def falso(req, timeout):
+            cuerpo = json.loads(req.data)
+            vistas.append((req.get_header("Authorization"), cuerpo))
+            if "DROP" in cuerpo["statementText"]:
+                return Respuesta(json.dumps({"items": [{"errorCode": 942, "errorMessage": "no existe"}]}).encode())
+            return Respuesta(json.dumps({"items": [{"resultSet": {"items": [{"USUARIO": "ana.rios", "ID": 3}]}}]}).encode())
+        a = AlmacenOracleREST("https://x.adb.sa-bogota-1.oraclecloudapps.com/ords/cnosos_app/_/sql", "cnosos_app", "c",
+                              abrir_url=falso)
+        self.assertEqual(a.consultar("SELECT usuario, id FROM usuarios WHERE id = :i", i=3),
+                         [{"usuario": "ana.rios", "id": 3}])
+        auth, cuerpo = vistas[-1]
+        self.assertTrue(auth.startswith("Basic "))
+        self.assertEqual(cuerpo["binds"], [{"name": "i", "data_type": "NUMBER", "value": 3}])
+        with self.assertRaises(RuntimeError) as e:
+            a.ejecutar("DROP TABLE usuarios PURGE")
+        self.assertIn("ORA-00942", str(e.exception))
+        with self.assertRaises(SystemExit):
+            AlmacenOracleREST("http://inseguro/ords/x/_/sql", "u", "c")
+
     def test_tipos_oracle(self):
         self.assertEqual([AlmacenOracle._tipo(None, t, n) for t, n in (("t", 40), ("n", 0))],
                          ["VARCHAR2(40 CHAR)", "NUMBER(12)"])

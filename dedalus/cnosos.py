@@ -162,7 +162,7 @@ class Cnosos:
     def _persistir(self, e):
         # Ariadna también queda en la base. Si la base falla, la solicitud no se cae: se cuenta.
         try:
-            self.almacen.ejecutar(
+            self.almacen.ejecutar_fondo(
                 "INSERT INTO eventos (episodio, n, ms, sesion, usuario, rol, metodo, ruta, estado, intento, hiedra, "
                 "accion, afectada, laberinto, fuga) VALUES (:episodio, :n, :ms, :sesion, :usuario, :rol, :metodo, "
                 ":ruta, :estado, :intento, :hiedra, :accion, :afectada, :laberinto, :fuga)",
