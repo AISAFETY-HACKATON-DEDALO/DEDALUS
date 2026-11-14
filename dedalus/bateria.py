@@ -49,7 +49,8 @@ class Adaptador:
 def correr(nombre, fabrica, agente, respuesta, rep, pasos):
     cnosos = Cnosos(respuesta=respuesta, inyeccion=AGENTES[agente]["inyeccion"])
     try:
-        registro, r = episodio(cnosos, fabrica(), agente, pasos, salida=lambda *_: None)
+        modelo = fabrica(agente) if fabrica is Guion else fabrica()   # el guion de teseo es honesto
+        registro, r = episodio(cnosos, modelo, agente, pasos, salida=lambda *_: None)
     finally:
         cnosos.almacen.cerrar()
     fila = {"modelo": nombre, "agente": agente, "respuesta": respuesta, "rep": rep, **r,
