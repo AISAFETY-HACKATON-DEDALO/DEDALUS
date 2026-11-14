@@ -84,6 +84,8 @@ class Panel:
         eventos = nuevos[:300]          # en orden y sin saltos: si hay más, el panel los pide en la siguiente vuelta
         m = self.tareas["minotauro"]
         tokens = getattr(self._modelo, "tokens", 0) if self._modelo else m.get("resumen", {}).get("tokens_atacante", 0)
+        if m.get("activo") and self._modelo is not None:
+            m["aviso_modelo"] = getattr(self._modelo, "estado", None)
         return {**foto, "eventos_nuevos": eventos, "pendientes": len(nuevos) - len(eventos), "tareas": self.tareas,
                 "tokens_atacante": tokens, "proveedores": disponibles(), "estadisticas": self.estadisticas,
                 "experimentos": self.experimentos,
@@ -101,11 +103,22 @@ class Panel:
         except SystemExit as e:
             return {"error": str(e)}
         self._modelo = modelo
-        self.tareas["minotauro"] = {"activo": True, "proveedor": modelo.nombre, "agente": agente, "inicio": time.time()}
+        tarea = {"activo": True, "proveedor": modelo.nombre, "agente": agente, "inicio": time.time(),
+                 "vivo": {"paso": 0, "estado": "arrancando", "desde": time.time()}, "pasos": [], "detener": False}
+        self.tareas["minotauro"] = tarea
+
+        def al_paso(e):
+            """Lo que el panel muestra mientras el modelo piensa: paso, estado y lo que el atacante dice que hace."""
+            tarea["vivo"] = {**e, "desde": time.time()}
+            if e.get("estado") == "actuó":
+                tarea["pasos"] = (tarea["pasos"] + [e])[-40:]
+            return not tarea["detener"]
 
         def correr():
             try:
-                _, r = episodio(self.cnosos, modelo, agente, int(pasos), salida=lambda *_: None)
+                # memoria corta: con el historial completo, la cuota gratuita (p. ej. 7000 tokens/min) se agota en 3 pasos
+                _, r = episodio(self.cnosos, modelo, agente, int(pasos), salida=lambda *_: None,
+                                memoria=None if proveedor == "guion" else 6, al_paso=al_paso)
                 try:
                     registrar(self.cnosos.almacen, r, "panel", self.respuesta)
                 except Exception as e:  # noqa: BLE001 — la corrida se ve igual aunque no se guarde
@@ -115,6 +128,10 @@ class Panel:
             except Exception as e:     # noqa: BLE001 — se muestra en el panel en vez de tumbar el servidor
                 self.tareas["minotauro"].update(activo=False, error=f"{type(e).__name__}: {e}"[:300])
         threading.Thread(target=correr, daemon=True).start()
+        return {"ok": True}
+
+    def detener(self):
+        self.tareas["minotauro"]["detener"] = True
         return {"ok": True}
 
     def dedalo(self, proveedor="guion"):
@@ -135,7 +152,9 @@ class Panel:
                 self.tareas["dedalo"]["resultados"].append({
                     "caso": c, "titulo": r["titulo"], "cwe_esperada": r["cwe_esperada"], "cwe": f.get("cwe"),
                     "cwe_correcta": f.get("cwe_correcta"), "verificado": f.get("verificado"),
-                    "veredicto": f.get("veredicto", "sin respuesta"), "intentos": r["intentos"],
+                    "veredicto": f.get("veredicto") or ("sin respuesta: " + next((h["error_modelo"][:120] for h in r.get("historial", [])
+                                                                                if h.get("error_modelo")), "el modelo no contestó")),
+                    "intentos": r["intentos"],
                     "explicacion": f.get("explicacion", ""), "parche": f.get("parche", "")[:1500],
                     "original": CASOS[c]["codigo"]})
             self.tareas["dedalo"]["activo"] = False
@@ -213,7 +232,7 @@ def servidor(panel, port=0):
                                                                              datos.get("agente", "minotauro"),
                                                                              datos.get("pasos", 25)),
                                 "/panel/dedalo": lambda: panel.dedalo(datos.get("proveedor", "guion")),
-                                "/panel/nuevo": panel.nuevo}
+                                "/panel/nuevo": panel.nuevo, "/panel/detener": panel.detener}
                     if self.command != "POST" or camino not in acciones:
                         raise Rechazo(404, "no_existe")
                     r = acciones[camino]()

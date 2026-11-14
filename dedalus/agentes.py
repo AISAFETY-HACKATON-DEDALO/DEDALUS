@@ -30,9 +30,9 @@ from .cnosos import INTENTOS, Cnosos
 
 PROVEEDORES = {
     "groq": ("https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "DEDALUS_MODELO_GROQ",
-             "llama-3.3-70b-versatile"),
+             "openai/gpt-oss-120b"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY",
-               "DEDALUS_MODELO_GEMINI", "gemini-2.5-flash"),
+               "DEDALUS_MODELO_GEMINI", "gemini-3.5-flash"),
     # Grok (xAI) y ChatGPT (OpenAI) usan la API de pago de cada empresa, no la suscripción de la aplicación.
     "grok": ("https://api.x.ai/v1/chat/completions", "XAI_API_KEY", "DEDALUS_MODELO_GROK", "grok-3-mini"),
     "openai": ("https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY", "DEDALUS_MODELO_OPENAI", "gpt-4o-mini"),
@@ -154,23 +154,47 @@ class Modelo:
         self.timeout = timeout
         self.max_tokens = max_tokens
         self.tokens = 0                  # lo que el proveedor dice que gastamos (entrada + salida)
+        self.estado = None               # para el panel: «esperando cuota 8 s», «modelo cambiado a …»
+        self.reintentos = 0
 
-    def __call__(self, mensajes):
-        datos = json.dumps({"model": self.modelo, "messages": mensajes, "temperature": 0.4,
-                            "max_tokens": self.max_tokens}).encode()
-        req = Request(self.url, data=datos, headers={"Content-Type": "application/json",
-                                                      "Authorization": "Bearer " + self.clave})
-        try:
-            with urlopen(req, timeout=self.timeout) as r:
-                datos = json.loads(r.read())
-            uso = datos.get("usage") or {}
-            self.tokens += int(uso.get("total_tokens") or 0) or int(uso.get("prompt_tokens") or 0) + int(uso.get("completion_tokens") or 0)
-            return datos["choices"][0]["message"]["content"] or ""
-        except HTTPError as err:
-            detalle = err.read()[:300].decode(errors="replace")
-            raise RuntimeError(f"El proveedor respondió {err.code}: {detalle}") from None
-        except (URLError, TimeoutError, OSError) as err:
-            raise RuntimeError(f"Sin conexión con el proveedor: {err}") from None
+    def _avisar(self, texto):
+        self.estado = texto
+
+    def __call__(self, mensajes, intentos=4):
+        """Llama al modelo. Si el proveedor pide esperar (429, «try again in 8s») espera y reintenta; si dice que el
+        modelo ya no existe y propone otro («use models/X»), se cambia a ese. Así la demo no muere por la cuota."""
+        for intento in range(intentos):
+            datos = json.dumps({"model": self.modelo, "messages": mensajes, "temperature": 0.4,
+                                "max_tokens": self.max_tokens}).encode()
+            req = Request(self.url, data=datos, headers={"Content-Type": "application/json",
+                                                          "Authorization": "Bearer " + self.clave})
+            try:
+                with urlopen(req, timeout=self.timeout) as r:
+                    datos = json.loads(r.read())
+                uso = datos.get("usage") or {}
+                self.tokens += int(uso.get("total_tokens") or 0) or int(uso.get("prompt_tokens") or 0) + int(uso.get("completion_tokens") or 0)
+                self.estado = None
+                return datos["choices"][0]["message"]["content"] or ""
+            except HTTPError as err:
+                detalle = err.read()[:600].decode(errors="replace").replace(self.clave, "[tachado]")
+                espera = re.search(r"(?:try again in|retry in|retry after)\s*([\d.]+)\s*(ms|s)", detalle, re.I)
+                otro = re.search(r"use (?:models/)?([\w.\-]+flash[\w.\-]*|[\w.\-]+pro[\w.\-]*)", detalle)
+                if err.code == 429 and intento < intentos - 1:
+                    s = float(espera.group(1)) / (1000 if espera and espera.group(2) == "ms" else 1) if espera else 10.0
+                    s = min(max(s + 0.5, 1.0), 30.0)
+                    self.reintentos += 1
+                    self._avisar(f"esperando cuota del proveedor: {s:.0f} s")
+                    time.sleep(s)
+                    continue
+                if err.code == 404 and otro and otro.group(1) != self.modelo and intento < intentos - 1:
+                    self._avisar(f"el modelo {self.modelo} ya no existe; cambio a {otro.group(1)}")
+                    self.modelo = otro.group(1)
+                    self.nombre = self.nombre.split(":")[0] + ":" + self.modelo
+                    continue
+                raise RuntimeError(f"El proveedor respondió {err.code}: {detalle[:300]}") from None
+            except (URLError, TimeoutError, OSError) as err:
+                raise RuntimeError(f"Sin conexión con el proveedor: {err}") from None
+        raise RuntimeError("El proveedor siguió sin responder tras varios intentos")
 
 
 class Guion:
@@ -218,7 +242,10 @@ def leer_accion(texto):
     return None
 
 
-def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
+def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print, memoria=None, al_paso=None):
+    """`memoria`: cuántos mensajes recientes ve el modelo (None = todo el historial, como en los experimentos).
+    Para la demo en vivo conviene poca memoria: menos tokens por llamada, cabe en la cuota gratuita.
+    `al_paso(estado)`: avisa al panel en cada paso; si devuelve False, el episodio se detiene."""
     perfil = AGENTES[agente]
     cuenta = cnosos.cuenta_de_prueba(perfil["cuenta"])
     mensajes = [{"role": "system", "content": perfil["sistema"]},
@@ -227,8 +254,12 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
     tokens_al_caer = None
     for paso in range(1, pasos + 1):
         t0 = time.perf_counter()
+        if al_paso and al_paso({"paso": paso, "estado": "pensando"}) is False:
+            final = {"motivo": "detenido"}
+            break
+        enviar = mensajes if not memoria or len(mensajes) <= memoria + 2 else mensajes[:2] + mensajes[-memoria:]
         try:
-            texto = modelo(mensajes)
+            texto = modelo(enviar)
         except RuntimeError as err:
             final = {"motivo": "error_proveedor", "detalle": str(err)}
             salida(f"   ✗ {err}")
@@ -272,6 +303,9 @@ def episodio(cnosos, modelo, agente="minotauro", pasos=15, salida=print):
             nota = f"LABERINTO · trepa al nivel {e['nivel']}"
         elif e["laberinto"]:
             nota = f"LABERINTO · nivel {e['nivel']}"
+        if al_paso:
+            al_paso({"paso": paso, "estado": "actuó", "pensamiento": cnosos._tachar(str(accion.get("pensamiento", "")))[:200],
+                     "metodo": metodo, "ruta": e["ruta"], "http": estado, "segundos": round(espera, 1)})
         registro.append({"paso": paso, "evento": e["n"], "pensamiento": cnosos._tachar(str(accion.get("pensamiento", "")))[:200],
                          "metodo": metodo, "ruta": e["ruta"], "estado": estado, "intento": e["intento"],
                          "accion": e["accion"], "laberinto": e["laberinto"], "segundos_modelo": round(espera, 2)})

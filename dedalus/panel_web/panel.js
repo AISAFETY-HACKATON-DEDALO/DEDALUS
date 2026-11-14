@@ -229,8 +229,13 @@ function pintar() {
   cifras.forEach(([v, t, sub, k]) => { const x = el('div', null, 'cifra ' + k); x.appendChild(el('b', String(v))); x.appendChild(el('span', t)); x.appendChild(el('small', sub)); c.appendChild(x); });
   opciones(est.proveedores || {});
   pintarStats(est.estadisticas || []);
-  $('m-correr').disabled = !!m.activo; $('m-correr').textContent = m.activo ? 'ATACANDO…' : 'ATACAR';
+  // Mientras ataca, el botón se vuelve DETENER; NUEVO EPISODIO espera a que no haya tareas (antes fallaba sin decir por qué).
+  $('m-correr').textContent = m.activo ? (m.detener ? 'DETENIENDO…' : 'DETENER') : 'ATACAR';
+  $('m-correr').classList.toggle('detener', !!m.activo);
+  $('m-correr').disabled = !!(m.activo && m.detener);
   $('d-correr').disabled = !!d.activo; $('d-correr').textContent = d.activo ? 'PARCHANDO…' : 'PARCHAR MUROS';
+  $('nuevo').disabled = !!(m.activo || d.activo); $('nuevo').title = $('nuevo').disabled ? 'espera a que terminen el ataque y los parches' : '';
+  vivo(m, d);
   const firmaM = JSON.stringify([d.resultados || [], Object.keys(est.casos)]);
   if (firmaM === firmaMuros) return;
   firmaMuros = firmaM;
@@ -243,6 +248,24 @@ function pintar() {
     if (r) li.addEventListener('click', () => hoja(r));
     ul.appendChild(li);
   });
+}
+
+// En vivo: qué está haciendo el atacante AHORA (paso, si piensa o espera cuota) y lo que dice que hace.
+let vistos = 0, tareaVista = null;
+function vivo(m, d) {
+  const v = $('vivo');
+  if (m.activo && m.vivo) {
+    const seg = Math.max(0, Math.round(Date.now() / 1000 - m.vivo.desde));
+    const que = m.aviso_modelo || (m.vivo.estado === 'pensando' ? `pensando… ${seg} s` : m.vivo.estado);
+    v.textContent = `MINOTAURO (${m.proveedor}) · paso ${m.vivo.paso || 0} · ${que}` + (d.activo ? ' · DÉDALO parchando…' : '');
+  } else v.textContent = d.activo ? `DÉDALO (${d.proveedor}) parchando: ${(d.resultados || []).length}/6 · TALOS verifica cada uno sin IA` : '';
+  if (tareaVista !== m.inicio) { tareaVista = m.inicio; vistos = 0; }
+  const nuevos = (m.pasos || []).slice(vistos);
+  if (nuevos.length) {
+    vistos = (m.pasos || []).length;
+    if (m.proveedor && !String(m.proveedor).startsWith('guion'))      // el guion no piensa: solo un modelo real tiene algo que decir
+      agregarAlHilo(nuevos.map(p => el('li', `◆ MINOTAURO · paso ${p.paso} · ${p.segundos} s pensando: «${p.pensamiento || '—'}»`, 'piensa t-nota')));
+  }
 }
 
 // Los selectores muestran solo modelos con llave puesta en la terminal; por defecto Gemini ataca y Groq defiende.
@@ -420,6 +443,9 @@ async function arrancar() {
   if (window.ResizeObserver) new ResizeObserver(medir).observe(cv); else window.addEventListener('resize', medir);
   requestAnimationFrame(cuadro);
   $('m-correr').addEventListener('click', async () => {
+    if (est && est.tareas.minotauro.activo) {
+      await api('/panel/detener', {}); decir('DETENIENDO AL MINOTAURO · TERMINA EL PASO EN CURSO', false); nota('el operador detuvo el ataque'); return;
+    }
     const r = await api('/panel/minotauro', { proveedor: $('m-proveedor').value, pasos: 25 });
     decir(r.ok ? 'EL MINOTAURO ENTRA CON LA CUENTA DEL CONTRATISTA' : 'NO ARRANCÓ: ' + (r.datos.error || r.estado), !r.ok);
     nota(r.ok ? `minotauro ataca con ${$('m-proveedor').value}` : 'el minotauro no arrancó: ' + (r.datos.error || r.estado));
