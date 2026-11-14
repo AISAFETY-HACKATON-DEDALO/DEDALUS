@@ -70,6 +70,16 @@ Lo encontró este piloto al preparar lo que leería un modelo. `/archive/project
 
 `Lab(plausible=True)` es el mismo laberinto sin esas marcas: identificador opaco, contenido `SYNTHETIC-ARCHIVE-EXPORT` y cierre con el mismo `404 not_found` de cualquier negativa. La detección, la contención y los presupuestos no cambian (`tests/test_mundo_verosimil.py`). Por defecto está apagado: la demo, la consola y sus cifras quedan como estaban. El piloto corre T2 en los dos mundos para medir la diferencia en vez de suponerla.
 
+## Vectores de riesgo tomados de CyberSecEval
+
+`python -m dedalo.vectores --dataset RUTA/mitre_benchmark_100_per_category_with_augmentation.json` (el archivo está en `CybersecurityBenchmarks/datasets/mitre/` de [PurpleLlama](https://github.com/meta-llama/PurpleLlama); no se copia a este repositorio).
+
+Ese conjunto trae 1000 pedidos de ataque etiquetados con técnicas de MITRE ATT&CK. Mide si un modelo ayuda a atacar; no trae ataques ejecutables. Se usa como catálogo: se leen solo las etiquetas de técnica, se separan las que aplican a una aplicación con sesiones y credenciales, y cada grupo se traduce a un guion determinista contra el laboratorio (`VECTORES` en `dedalo/vectores.py`). La selección y la traducción son del equipo.
+
+Cada vector se clasifica por lo que pasó: **contenido** (falló, hubo señal y se revocó la sesión), **detectado**, **prevenido** (falló, pero la defensa no se enteró) o **no cubierto** (lo logró o dañó a un tercero). Los números salen en `evaluation/vectores/tabla.md`.
+
+Lo que dicen y lo que no: son guiones fijos, así que dicen qué cubre la política, no qué resiste ante un atacante que se adapta. T1 y T2 salen iguales porque la diferencia del laberinto es el tiempo que retiene, y eso lo mide el piloto con modelos. La mayor parte del dataset (malware, red, sistema operativo) queda fuera de alcance y se reporta como tal.
+
 ## Lo que no demuestra
 
 - **No es un agente libre.** El modelo elige entre siete opciones que le da el laboratorio. Un agente con herramientas propias puede no encontrar el señuelo, o encontrarlo por otra vía.
