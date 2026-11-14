@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DÉDALO · el laberinto</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<div class="pantalla">
+  <section class="fachada">
+    <div class="rotulo-fachada"><b>LA FACHADA</b><span>el portal de Cnosos Ingeniería, tal como lo ve quien entra</span></div>
+    <iframe id="portal" src="/portal" title="Portal de Cnosos Ingeniería"></iframe>
+  </section>
+
+  <section class="detras">
+    <header class="cab">
+      <div class="marca"><b>DÉDALO</b><span>LO QUE PASA DETRÁS</span></div>
+      <div class="chips"><span id="almacen" class="chip"></span><span id="episodio" class="chip"></span></div>
+    </header>
+
+    <div class="cifras" id="cifras"></div>
+
+    <div class="escena"><p class="voz" id="voz"></p><div class="lienzo-caja"><canvas id="lienzo"></canvas></div></div>
+
+    <div class="mando">
+      <div class="grupo">
+        <span class="rotulo">MINOTAURO</span>
+        <select id="m-proveedor"><option value="guion">guion (sin red)</option><option value="groq">groq</option><option value="gemini">gemini</option></select>
+        <button type="button" id="m-correr" class="pildora ataque">ATACAR</button>
+      </div>
+      <div class="grupo">
+        <span class="rotulo">DÉDALO</span>
+        <select id="d-proveedor"><option value="guion">guion (sin red)</option><option value="groq">groq</option><option value="gemini">gemini</option></select>
+        <button type="button" id="d-correr" class="pildora defensa">PARCHAR MUROS</button>
+      </div>
+      <div class="grupo">
+        <button type="button" id="cuenta" class="pildora">CUENTA DE ATAQUE → PORTAL</button>
+        <button type="button" id="nuevo" class="pildora">NUEVO EPISODIO</button>
+      </div>
+    </div>
+
+    <div class="abajo">
+      <div class="hilo-caja"><div class="titulo">EL HILO <span id="hilo-pie"></span></div><ol class="hilo" id="hilo"></ol></div>
+      <div class="muros-caja"><div class="titulo">LOS MUROS · DÉDALO Y TALOS</div><ol class="muros" id="muros"></ol></div>
+    </div>
+  </section>
+</div>
+
+<div class="hoja" id="hoja" hidden>
+  <div class="hoja-in">
+    <div class="titulo" id="h-titulo"></div>
+    <p id="h-veredicto"></p>
+    <div class="dos"><div><span class="rotulo">ANTES</span><pre id="h-antes"></pre></div><div><span class="rotulo">PARCHE</span><pre id="h-despues"></pre></div></div>
+    <button type="button" id="h-cerrar" class="pildora">CERRAR</button>
+  </div>
+</div>
+<script src="panel.js"></script>
+</body>
+</html>
