@@ -157,7 +157,7 @@ class AlmacenOracleREST(Almacen):
     mismo camino que Database Actions en el navegador. Requiere ORDS_ADMIN.ENABLE_SCHEMA sobre el esquema."""
     motor = "oracle"
 
-    def __init__(self, url, usuario, clave, timeout=20, abrir_url=None):
+    def __init__(self, url, usuario, clave, timeout=20, abrir_url=None, probar=True):
         super().__init__()
         if not url.startswith("https://") or not url.rstrip("/").endswith("/_/sql"):
             raise SystemExit("CNOSOS_ORDS_URL debe ser https://…/ords/cnosos_app/_/sql")
@@ -167,6 +167,8 @@ class AlmacenOracleREST(Almacen):
         self.con = None
         self._cola = Queue()
         threading.Thread(target=self._escritor, daemon=True).start()
+        if probar:
+            self.consultar("SELECT 1 AS ok FROM dual")      # falla aquí, y no a mitad de la siembra
 
     def _tipo(self, tipo, largo):
         return f"VARCHAR2({largo} CHAR)" if tipo == "t" else "NUMBER(12)"
@@ -242,8 +244,24 @@ class AlmacenOracleREST(Almacen):
         self._cola.join()
 
 
-def abrir(entorno=None):
+def abrir(entorno=None, respaldo=True):
+    """Abre el almacén configurado. Si Oracle no responde y `respaldo` está activo, avisa y sigue con SQLite:
+    la demo no se cae por la red. El panel muestra siempre qué almacén está usando."""
     e = os.environ if entorno is None else entorno
+    if not respaldo or e.get("DEDALUS_ALMACEN", "sqlite").lower() == "sqlite":
+        return _abrir(e)
+    try:
+        return _abrir(e)
+    except SystemExit:
+        raise
+    except Exception as err:     # noqa: BLE001 — cualquier fallo de conexión
+        import sys
+        print(f"ATENCIÓN: no se pudo abrir Oracle ({type(err).__name__}: {str(err)[:160]}). Sigo con SQLite local.",
+              file=sys.stderr)
+        return AlmacenSQLite(e.get("DEDALUS_SQLITE", ":memory:"))
+
+
+def _abrir(e):
     if e.get("DEDALUS_ALMACEN", "sqlite").lower() == "oracle_rest":
         faltan = [v for v in ("CNOSOS_ORDS_URL", "CNOSOS_DB_USUARIO", "CNOSOS_DB_CLAVE") if not e.get(v)]
         if faltan:

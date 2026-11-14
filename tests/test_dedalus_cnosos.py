@@ -237,7 +237,7 @@ class Almacen(unittest.TestCase):
                 return Respuesta(json.dumps({"items": [{"errorCode": 942, "errorMessage": "no existe"}]}).encode())
             return Respuesta(json.dumps({"items": [{"resultSet": {"items": [{"USUARIO": "ana.rios", "ID": 3}]}}]}).encode())
         a = AlmacenOracleREST("https://x.adb.sa-bogota-1.oraclecloudapps.com/ords/cnosos_app/_/sql", "cnosos_app", "c",
-                              abrir_url=falso)
+                              abrir_url=falso, probar=False)
         self.assertEqual(a.consultar("SELECT usuario, id FROM usuarios WHERE id = :i", i=3),
                          [{"usuario": "ana.rios", "id": 3}])
         auth, cuerpo = vistas[-1]
@@ -248,6 +248,19 @@ class Almacen(unittest.TestCase):
         self.assertIn("ORA-00942", str(e.exception))
         with self.assertRaises(SystemExit):
             AlmacenOracleREST("http://inseguro/ords/x/_/sql", "u", "c")
+
+    def test_si_oracle_no_responde_sigue_con_sqlite_y_lo_dice(self):
+        import contextlib
+        import io
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            a = abrir({"DEDALUS_ALMACEN": "oracle_rest", "CNOSOS_ORDS_URL": "https://127.0.0.1:9/ords/x/_/sql",
+                       "CNOSOS_DB_USUARIO": "u", "CNOSOS_DB_CLAVE": "c"})
+        self.assertEqual(a.motor, "sqlite")
+        self.assertIn("Sigo con SQLite", err.getvalue())
+        with self.assertRaises(RuntimeError):
+            abrir({"DEDALUS_ALMACEN": "oracle_rest", "CNOSOS_ORDS_URL": "https://127.0.0.1:9/ords/x/_/sql",
+                   "CNOSOS_DB_USUARIO": "u", "CNOSOS_DB_CLAVE": "c"}, respaldo=False)
 
     def test_tipos_oracle(self):
         self.assertEqual([AlmacenOracle._tipo(None, t, n) for t, n in (("t", 40), ("n", 0))],
