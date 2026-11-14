@@ -38,6 +38,13 @@ $env:GEMINI_API_KEY = "..."; $env:GROQ_API_KEY = "..."
 powershell -ExecutionPolicy Bypass -File .\abrir.ps1
 ```
 
+**ARGOS y los cebos.** Un clasificador determinista (ARGOS) marca a cada sesión: normal, observado, sospechoso o confirmado. Solo al sospechoso le aparecen cebos según lo que busca (si busca «planos», unos planos falsos que son suyos). Morder un cebo activa a Ícaro, y con la política `desviar` (la del panel) todo lo de esa cuenta, incluso un login nuevo, cae al laberinto. La cifra que lo prueba es «al real tras detectar», que debe ser 0. Qué protege y qué no, con números: `docs/PROTECCION.md`.
+
+```powershell
+python -m dedalus.politicas                       # cortar vs desviar, ritmo marcar vs laberinto (guion)
+python -m dedalus.politicas --modelos groq        # con un modelo real de atacante
+```
+
 **Los números en Oracle.** Los resultados de los experimentos (piloto con modelos reales, vectores MITRE y batería) se publican en las tablas `experimentos` y `vectores`. El panel lo hace solo al arrancar, y la pestaña **LAS CIFRAS** los muestra (con **VER TABLA COMPLETA**). A mano:
 
 ```powershell

@@ -79,7 +79,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(e["fugas"], 0)
         # el ataque quedó como corrida, y el panel lo muestra en sus estadísticas
         self.assertEqual([(f["agente"], f["modelo"], f["n"], f["detectadas"]) for f in e["estadisticas"]],
-                         [("minotauro", "guion", 1, 1)])
+                         [("minotauro", "guion:persistente", 1, 1)])
         anterior = e["episodio"]
         estado, r = self.operar("/panel/nuevo", {})
         self.assertEqual(estado, 200)
