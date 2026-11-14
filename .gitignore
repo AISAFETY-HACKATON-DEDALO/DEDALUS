@@ -6,3 +6,10 @@ __pycache__/
 !.env.example
 results/
 *.log
+
+# Oracle: el wallet y las claves nunca entran al repositorio
+wallet*/
+*.sso
+*.p12
+cwallet*
+ewallet*
