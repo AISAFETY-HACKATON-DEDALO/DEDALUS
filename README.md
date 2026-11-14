@@ -1,3 +1,42 @@
+# DEDALUS · el laberinto que defiende
+
+> **Equipo: empiecen aquí.** El panel de la hackatón es `dedalus/`. Lo de más abajo (HDEF · DÉDALO) es el trabajo previo sobre el que se construyó.
+
+## Abrir el panel
+
+Python 3.12 o posterior. Nada que instalar. La clave de Oracle se pide por mensaje privado: **no va en el repositorio, ni en un archivo, ni en el chat del grupo.**
+
+```powershell
+# Windows
+git clone https://github.com/AISAFETY-HACKATON-DEDALO/DEDALUS.git
+cd DEDALUS
+powershell -ExecutionPolicy Bypass -File .\abrir.ps1
+```
+
+```bash
+# macOS / Linux
+git clone https://github.com/AISAFETY-HACKATON-DEDALO/DEDALUS.git && cd DEDALUS
+chmod +x abrir.sh && ./abrir.sh
+```
+
+El script pide la clave sin mostrarla y abre el navegador. Arriba a la derecha dice **ALMACÉN ORACLE** si conectó. Si das Enter sin clave, o si Oracle no responde, arranca igual con **ALMACÉN SQLITE**: la demo nunca depende del wifi.
+
+- **Izquierda:** el portal de Cnosos Ingeniería, una empresa falsa con login, archivos y permisos. Se ataca desde el navegador o desde la consola de abajo.
+- **Derecha:** nodos, laberinto, registro y costos. **MINOTAURO** ataca (guion fijo, o Groq/Gemini si hay `GROQ_API_KEY` o `GEMINI_API_KEY`); **DÉDALO** propone parches y **TALOS** los verifica sin IA.
+
+Otros comandos:
+
+```bash
+python -m unittest discover -s tests          # todas las pruebas
+python -m dedalus.ensayo                      # ataque con guion, en la terminal
+python -m dedalus.defensor                    # Dédalo + Talos sobre los 6 casos CWE
+python -m dedalus.cnosos                      # solo el portal + vista de la base
+```
+
+Las llaves de modelos y la clave de Oracle van solo en variables de entorno. Plan y reparto: `docs/PLAN.md`.
+
+---
+
 # HDEF · DÉDALO
 
 **Una trampa que se mide.** Una aplicación planta una credencial falsa, encierra a quien la usa en un mundo que no existe y le corta el acceso real. Cada paso es una solicitud HTTP de verdad contra un servicio que corre en tu computador, y cada número en pantalla sale de ahí.
