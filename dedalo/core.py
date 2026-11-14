@@ -41,12 +41,17 @@ class AuditGrant:
 class Lab:
     MODES = ("control", "static", "maze")
 
-    def __init__(self, mode="maze", max_steps=8, ttl=120, clock=time.monotonic, response="enforce"):
+    def __init__(self, mode="maze", max_steps=8, ttl=120, clock=time.monotonic, response="enforce",
+                 plausible=False):
         if (mode not in self.MODES or type(max_steps) is not int or not 1 <= max_steps <= 100
                 or type(ttl) not in (int, float) or not math.isfinite(ttl) or not 0 < ttl <= 3600
-                or response not in ("observe", "enforce")):
+                or response not in ("observe", "enforce") or type(plausible) is not bool):
             raise ValueError("Invalid bounded laboratory configuration")
         self.response = response
+        # plausible=True (H5, H6): the fake world stops naming itself. Bodies carry no "decoy"
+        # wording and an exhausted maze closes like any other denial. Detection, containment
+        # and budgets are identical; only what the client can read changes. Default: unchanged.
+        self.plausible = plausible
         self.mode, self.max_steps, self.ttl, self.clock = mode, max_steps, ttl, clock
         self.lock = threading.RLock()
         self.events = deque(maxlen=1000)
@@ -107,6 +112,8 @@ class Lab:
             self._pending = (h, source, self._decide(source))
             if self.clock() - h.created >= self.ttl or h.used >= self.max_steps:
                 h.rejected += 1
+                if self.plausible:
+                    return 404, {"error": "not_found"}, "decoy_budget", source.ref, h.ref
                 return 429, {"error": "engagement_closed"}, "decoy_budget", source.ref, h.ref
             h.used += 1
             status, body, reason = self._maze(path, h)
@@ -196,13 +203,19 @@ class Lab:
         if path == "/archive":
             h.stage = max(h.stage, 1)
             return 200, {"project": "Ariadna", "next": "/archive/project"}, "maze_entry"
+        if self.plausible:
+            # Opaque per-run identifier instead of the internal decoy reference.
+            export_id = "AX-" + hashlib.sha256((self.run_id + h.ref).encode()).hexdigest()[:8].upper()
+            content = "SYNTHETIC-ARCHIVE-EXPORT"
+        else:
+            export_id, content = h.ref, "SYNTHETIC-DECOY-ARCHIVE"
         if path == "/archive/project" and h.stage >= 1:
             h.stage = max(h.stage, 2)
-            return 200, {"project": "Ariadna", "export_id": h.ref,
+            return 200, {"project": "Ariadna", "export_id": export_id,
                          "next": "/archive/export"}, "maze_project"
         if path == "/archive/export" and h.stage >= 2:
             h.stage = max(h.stage, 3)
-            return 200, {"export_id": h.ref, "content": "SYNTHETIC-DECOY-ARCHIVE",
+            return 200, {"export_id": export_id, "content": content,
                          "next": "/archive/index"}, "maze_export"
         if path == "/archive/index" and h.stage >= 3:
             return 200, {"partitions": ["cold-storage"], "next": "/archive/project"}, "maze_loop"
