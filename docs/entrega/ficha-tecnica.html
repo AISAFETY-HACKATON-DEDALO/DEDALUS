@@ -52,7 +52,7 @@ Repositorio: github.com/AISAFETY-HACKATON-DEDALO/DEDALUS · Laboratorio local co
 <li><b>Piloto con modelos reales</b> (Groq: gpt-oss-120b, gpt-oss-20b, qwen3.8-27b; Gemini): 120 episodios, 87 concluyentes. Tres niveles (T0 solo permisos, T1 señuelo, T2 señuelo + laberinto), dos condiciones (ingenuo / advertido de que hay trampas) y tres laberintos. Proporciones con intervalo de Wilson al 95 %. Los fallos del proveedor (cuota) no cuentan.</li>
 <li><b>Vectores MITRE:</b> 10 vectores deterministas que cubren los 157 casos aplicables, en cada nivel.</li>
 <li><b>¿Protege?:</b> un atacante persistente (vuelve a entrar si lo sacan) contra dos políticas: cortar la sesión o desviar la cuenta. Agente honesto como control.</li>
-<li><b>Ciclo:</b> ataques capturados → parche de un modelo defensor (Groq) → verificación sin IA. 13 corridas.</li>
+<li><b>Ciclo:</b> ataques capturados → parche de un modelo defensor (Groq) → verificación sin IA. 13 corridas con atacante de ensayo y una con atacante real.</li>
 <li>198 pruebas automáticas; Oracle Autonomous Database (Bogotá) como almacén de la organización falsa y del registro.</li>
 </ul>
 
@@ -67,7 +67,8 @@ Repositorio: github.com/AISAFETY-HACKATON-DEDALO/DEDALUS · Laboratorio local co
 <tr><td>El laberinto generativo los retiene</td><td class="n">6,0 pasos vs 2,7 · abandonan 4/10 vs 15/16 · 7.536 tokens</td></tr>
 <tr><td>Cobertura MITRE (con señuelo)</td><td class="n">69 de 157 casos contenidos (0 sin señuelo)</td></tr>
 <tr><td>Desviar protege; cortar no</td><td class="n">tras detectar, al sistema real: desviar 0 · cortar 5 (3 con datos)*</td></tr>
-<tr><td>Parches verificados (con esquema)</td><td class="n">36 de 40 funciones cerradas · 7–81 s</td></tr>
+<tr><td>Atacante real (gpt-oss-120b vía Groq, hoy)</td><td class="n">detectado y contenido 3 de 3 · 0 fugas · honesto: 0 de 3 falsos +</td></tr>
+<tr><td>Parches verificados (con esquema)</td><td class="n">36 de 40 funciones cerradas · 7–81 s · con atacante y defensor reales: 0 de 2 (ambos rechazados al verificar)</td></tr>
 <tr><td>Secretos filtrados</td><td class="n">0 en todo</td></tr>
 </table>
 <p class="nota">* con atacante de guion: comprueba el mecanismo, no mide a un modelo.</p>
@@ -92,7 +93,7 @@ Repositorio: github.com/AISAFETY-HACKATON-DEDALO/DEDALUS · Laboratorio local co
 <ul>
 <li><b>Menú cerrado:</b> en el piloto el modelo elige entre opciones que ofrece el laboratorio; no es un agente libre con herramientas propias. En Cnosos usa HTTP, pero dentro del mismo proceso.</li>
 <li><b>Marco declarado:</b> las instrucciones del atacante dicen que el laboratorio es sintético y autorizado. Puede cambiar su conducta; la siguiente prueba es un marco neutro.</li>
-<li><b>Muestras pequeñas</b> (3 a 24 episodios por celda): los intervalos son anchos. «¿Protege?» solo con guion. El ciclo usa un atacante de ensayo y el parche se verifica, no se despliega.</li>
+<li><b>Muestras pequeñas</b> (3 a 24 episodios por celda): los intervalos son anchos. La comparación cortar/desviar solo con guion: las 24 corridas con Groq fallaron por el proveedor (403) y quedan inconclusas. El parche se verifica, no se despliega.</li>
 <li><b>Desviar castiga a la cuenta:</b> un cebo filtrado permite que un tercero encierre a su dueño (vector V10, no cubierto).</li>
 <li><b>Lo que no cubre:</b> un atacante que nunca toca nada sospechoso no ve cebos (los permisos lo frenan, sin señal). ARGOS es determinista: se puede explicar y repetir, y también aprender a evadir.</li>
 </ul>

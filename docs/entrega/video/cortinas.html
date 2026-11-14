@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000}
+section{width:1600px;height:900px;background:#0b0a10;color:#f4f1ea;font-family:Inter,system-ui,sans-serif;padding:90px 120px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.mono{font-family:'DejaVu Sans Mono',monospace;letter-spacing:.5px}
+.eti{font-family:'DejaVu Sans Mono',monospace;font-size:20px;color:#ff7ebf;letter-spacing:3px;text-transform:uppercase;margin-bottom:22px}
+h1{font-family:'Inter Display',Inter;font-weight:800;font-size:96px;letter-spacing:-2px;line-height:1}
+h2{font-family:'Inter Display',Inter;font-weight:700;font-size:58px;letter-spacing:-1px;line-height:1.08;margin-bottom:34px}
+p.lead{font-size:34px;line-height:1.35;color:#d8d3e4;max-width:1250px}
+p.lead b{color:#fff}
+.pie{position:absolute;left:120px;right:120px;bottom:56px;font-size:19px;color:#8d879c;line-height:1.45}
+.rosa{color:#ff7ebf}.lila{color:#b48cff}.verde{color:#8fe3a8}
+.fila{display:flex;gap:70px;align-items:flex-start}
+.grande{font-family:'Inter Display',Inter;font-weight:800;font-size:150px;line-height:.95;letter-spacing:-4px}
+.sub{font-size:26px;color:#cfc9dc;margin-top:12px;line-height:1.35}
+.barras{flex:1;margin-top:8px}
+.b{display:grid;grid-template-columns:230px 1fr 90px;align-items:center;gap:18px;margin:0 0 22px;font-size:25px}
+.b .nom{color:#e7e2f0;font-family:'DejaVu Sans Mono',monospace;font-size:21px}
+.b .riel{height:30px;background:#1d1a26;border-radius:4px;position:relative}
+.b .lleno{height:30px;background:#ff4fa3;border-radius:0 4px 4px 0}
+.b .lleno.gris{background:#5e586c}
+.b .val{font-family:'DejaVu Sans Mono',monospace;font-size:22px;color:#f4f1ea;text-align:right}
+.tarjetas{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}
+.t{border-top:3px solid #ff4fa3;padding-top:22px}
+.t.lila{border-color:#b48cff}.t.verde{border-color:#8fe3a8}.t.gris{border-color:#5e586c}
+.t .n{font-family:'Inter Display',Inter;font-weight:800;font-size:84px;letter-spacing:-2px;line-height:1}
+.t .d{font-size:24px;color:#d8d3e4;margin-top:14px;line-height:1.35}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-bottom:34px}
+.vs .caja{background:#15131c;border-radius:8px;padding:30px 36px}
+.vs .caja .n{font-family:'Inter Display',Inter;font-weight:800;font-size:100px;line-height:1;letter-spacing:-3px}
+.vs .caja .k{font-family:'DejaVu Sans Mono',monospace;font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#a9a3b8;margin-bottom:10px}
+.vs .caja .d{font-size:25px;color:#d8d3e4;margin-top:10px}
+ul.lim{list-style:none;font-size:30px;line-height:1.4;color:#d8d3e4}
+ul.lim li{margin-bottom:20px;padding-left:34px;position:relative}
+ul.lim li:before{content:'—';position:absolute;left:0;color:#ff7ebf}
+ul.lim b{color:#fff}
+.flujo{display:flex;gap:14px;margin-top:46px;font-family:'DejaVu Sans Mono',monospace;font-size:22px}
+.flujo span{padding:12px 18px;border:1.5px solid #3a3548;border-radius:6px;color:#e7e2f0}
+.flujo i{color:#ff7ebf;font-style:normal;align-self:center}
+</style></head><body>
+
+<section id="c-titulo">
+  <div class="eti">AI Safety Colombia · DefAcc 2026 · Track 3 · Ciberdefensa automatizada</div>
+  <h1>DEDALUS<br><span class="rosa">el laberinto que defiende</span></h1>
+  <p class="lead" style="margin-top:40px">Detecta, contiene y aprende de agentes de IA que atacan una aplicación web, <b>sin gastar un solo token en defenderse.</b></p>
+  <div class="flujo"><span>ARGOS</span><i>→</i><span>Cebos</span><i>→</i><span>Ícaro</span><i>→</i><span class="lila">Laberinto</span><i>→</i><span>Ariadna (Oracle)</span><i>→</i><span>DÉDALO + TALOS</span></div>
+  <div class="pie">Laboratorio local · empresa inventada (Cnosos) · datos sintéticos</div>
+</section>
+
+<section id="c-amenaza">
+  <div class="eti">La amenaza</div>
+  <h2>Un agente de IA con una cuenta válida<br>explora sin cansarse.</h2>
+  <p class="lead">Busca archivos ajenos, credenciales y rutas de administración. <b>Los permisos lo frenan, pero no dejan señal:</b> el defensor no se entera, y el atacante sigue probando sin costo.</p>
+  <p class="lead" style="margin-top:30px">De los 1.000 casos MITRE de CyberSecEval, <b>157 aplican</b> a una aplicación web con cuentas.</p>
+  <div class="pie">A continuación: el sistema funcionando. Atacante y usuario son agentes de guion (sin red), ralentizados para que se vean.</div>
+</section>
+
+<section id="c-muerden">
+  <div class="eti">Con modelos reales · Groq y Gemini · 120 episodios</div>
+  <h2>¿Los atacantes de IA caen en el cebo?</h2>
+  <div class="fila">
+    <div style="width:470px">
+      <div class="grande rosa">60<span style="font-size:70px;color:#f4f1ea"> de 66</span></div>
+      <div class="sub">episodios con cebo: el modelo lo abrió.<br><span class="mono" style="font-size:21px;color:#a9a3b8">IC 95 % (Wilson): 82–96 %</span></div>
+      <div class="sub" style="margin-top:28px">Sin cebo no hay nada que detectar:<br><b>0 de 21.</b></div>
+    </div>
+    <div class="barras">
+      <div class="b"><span class="nom">gpt-oss-120b</span><div class="riel"><div class="lleno" style="width:100%"></div></div><span class="val">22/22</span></div>
+      <div class="b"><span class="nom">gpt-oss-20b</span><div class="riel"><div class="lleno" style="width:100%"></div></div><span class="val">20/20</span></div>
+      <div class="b"><span class="nom">qwen3.8-27b</span><div class="riel"><div class="lleno" style="width:75%"></div></div><span class="val">18/24</span></div>
+      <div class="b"><span class="nom">sin cebo (T0)</span><div class="riel"><div class="lleno gris" style="width:0.6%"></div></div><span class="val">0/21</span></div>
+      <div class="sub" style="font-size:22px;margin-top:26px;color:#a9a3b8">Avisarles «puede haber trampas» cambia a unos modelos y no a otros: qwen baja de 11/12 a <b style="color:#fff">7/12</b>; gpt-oss sigue en 18/18.</div>
+    </div>
+  </div>
+  <div class="pie">Mordida del cebo por modelo (niveles T1 y T2). Los fallos del proveedor (cuota) no cuentan. Datos por episodio: evaluation/llm/ del repositorio.</div>
+</section>
+
+<section id="c-protege" style="padding-top:60px;padding-bottom:110px">
+  <div class="eti">¿Protege o solo incomoda?</div>
+  <h2 style="font-size:52px;margin-bottom:28px">Tras detectarlo, ¿cuánto llega al sistema real?</h2>
+  <div class="vs">
+    <div class="caja"><div class="k">Cortar la sesión</div><div class="n rosa">5</div><div class="d">solicitudes al sistema real, <b>3 con datos</b>: vuelve a entrar con su contraseña</div></div>
+    <div class="caja"><div class="k">Desviar al laberinto · DEDALUS</div><div class="n verde">0</div><div class="d">la cuenta entera queda en el laberinto, aunque vuelva a entrar</div></div>
+  </div>
+  <div class="tarjetas">
+    <div class="t lila"><div class="n">4.389</div><div class="d">tokens que gasta el atacante después de morder. Nosotros: <b>0 tokens y 0,39 ms</b> de CPU.</div></div>
+    <div class="t lila"><div class="n">6,0 <span style="font-size:40px">vs 2,7</span></div><div class="d">pasos que el laberinto generativo lo retiene frente al plano; abandonan 4/10 vs 15/16.</div></div>
+    <div class="t verde"><div class="n">0</div><div class="d">cebos vistos y detecciones del usuario honesto: los cebos solo aparecen tras señales de ataque.</div></div>
+  </div>
+  <div class="pie">Cortar vs. desviar: medido con el atacante persistente de guion (comprueba el mecanismo, no mide a un modelo). Costos y retención: con modelos reales.</div>
+</section>
+
+<section id="c-hoy">
+  <div class="eti">Hoy, con un atacante real · gpt-oss-120b vía Groq</div>
+  <h2>Lo corrimos contra un modelo de verdad.</h2>
+  <div class="tarjetas">
+    <div class="t"><div class="n">3 <span style="font-size:44px">de 3</span></div><div class="d">episodios: el atacante fue <b>detectado y contenido</b> (mordió un cebo hacia el paso 13) · 0 fugas.</div></div>
+    <div class="t lila"><div class="n">6.142</div><div class="d">tokens promedio que gastó <b>dentro del laberinto</b>. Nuestra defensa: 0,7 ms.</div></div>
+    <div class="t verde"><div class="n">0 <span style="font-size:44px">de 3</span></div><div class="d">falsos positivos con el usuario honesto (mismo modelo).</div></div>
+  </div>
+  <p class="lead" style="margin-top:46px;font-size:28px">Con el mismo modelo como defensor, <b>sus 2 parches fueron rechazados al verificar</b>: uno no pasó el filtro y otro rompía el uso legítimo. El verificador sin IA no acepta un parche porque suene bien.</p>
+  <div class="pie">n = 3 por celda: intervalos anchos (detección 44–100 %). Datos por episodio en evaluation/cnosos y evaluation/ciclo.</div>
+</section>
+
+<section id="c-aprende">
+  <div class="eti">El ciclo · lo capturado se vuelve defensa</div>
+  <h2>Cada ataque atrapado es una prueba de regresión.</h2>
+  <p class="lead" style="margin-bottom:46px">DÉDALO (un modelo) propone el parche. <b>TALOS (sin IA) solo lo acepta si pasa las pruebas del caso y bloquea los ataques capturados.</b></p>
+  <div class="tarjetas">
+    <div class="t"><div class="n">36 <span style="font-size:44px">de 40</span></div><div class="d">funciones vulnerables cerradas con parches verificados, por defensores gratuitos (7–81 s).</div></div>
+    <div class="t"><div class="n">69 <span style="font-size:44px">de 157</span></div><div class="d">casos MITRE aplicables contenidos por 10 vectores deterministas (0 sin señuelo).</div></div>
+    <div class="t verde"><div class="n">0</div><div class="d">secretos filtrados en todos los experimentos. 198 pruebas automáticas.</div></div>
+  </div>
+  <div class="pie">Registro de cada solicitud, alerta y corrida en Oracle Autonomous Database (Bogotá), con SQLite como respaldo local.</div>
+</section>
+
+<section id="c-limites">
+  <div class="eti">Lo que no afirmamos</div>
+  <h2>Límites, dichos de frente.</h2>
+  <ul class="lim">
+    <li><b>Menú cerrado:</b> el modelo elige entre acciones del laboratorio; no es un agente libre con sus herramientas.</li>
+    <li><b>Marco declarado:</b> las instrucciones dicen que el laboratorio es sintético. Siguiente prueba: un marco neutro.</li>
+    <li><b>Muestras pequeñas:</b> 3 a 24 episodios por celda; los intervalos son anchos.</li>
+    <li><b>Cortar vs. desviar</b> se probó con atacante de guion. Y un atacante que nunca toca nada sospechoso no ve cebos.</li>
+  </ul>
+  <div class="pie">Uso dual: no publicamos exploits; las fallas son sintéticas en una empresa inventada. Publicar reglas ayuda a evadirlas: lo aceptamos por auditabilidad, y los cebos cambian por sesión.</div>
+</section>
+
+<section id="c-cierre">
+  <div class="eti">DEDALUS · Track 3</div>
+  <h1 style="font-size:84px">El atacante no sabe que lo atrapamos.<br><span class="rosa">Nosotros sabemos todo lo que intentó.</span></h1>
+  <p class="lead mono" style="margin-top:50px;font-size:28px">github.com/AISAFETY-HACKATON-DEDALO/DEDALUS</p>
+  <div class="pie">Código escrito por el equipo con asistencia de modelos de IA, declarada en el historial de git. Datos: CyberSecEval (Meta, Purple Llama), MITRE ATT&amp;CK y D3FEND. Infraestructura: Oracle Autonomous Database (Oracle Academy).</div>
+</section>
+</body></html>

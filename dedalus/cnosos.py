@@ -130,6 +130,7 @@ class Cnosos:
         self.alertas = deque(maxlen=500)
         self.desvios = 0                                         # solicitudes de un atrapado que absorbió el laberinto
         self.reales_tras = 0                                     # solicitudes que llegaron al portal real DESPUÉS de delatarse
+        self.delatadas = {}                                      # cuenta → evento en que se delató (cuenta, no sesión: si vuelve a entrar, sigue contando)
         self.inyeccion, self.clock = bool(inyeccion), clock
         self.lock = threading.RLock()
         self.episodio = secrets.token_hex(5)
@@ -215,9 +216,13 @@ class Cnosos:
             ctx = {"intento": None, "hiedra": None, "accion": None, "afectada": None}
             sesion, estado, datos = self._atender(metodo, ruta, cabeceras, cuerpo, n, ctx)
             argos = self._argos(sesion, n, ctx)
-            if sesion and not sesion.laberinto and ctx["accion"] is None:
+            if sesion:
                 p = self.argos.perfiles.get(sesion.ref)
-                if p and p.paso_confirmado is not None and n > p.paso_confirmado:
+                if p and p.paso_confirmado is not None:
+                    self.delatadas.setdefault(sesion.usuario, p.paso_confirmado)
+            if sesion and not sesion.laberinto and ctx["accion"] is None:
+                desde = self.delatadas.get(sesion.usuario)
+                if desde is not None and n > desde:
                     self.reales_tras += 1                       # la medida de si protege: debe quedarse en 0
             if ctx["intento"] and sesion is not None and not ctx.get("contado"):
                 sesion.intentos[ctx["intento"]] += 1

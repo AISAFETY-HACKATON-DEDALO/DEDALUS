@@ -54,6 +54,10 @@ def tabla(filas):
               "con datos reales | absorbidas por el laberinto | fugas |", "|---|---|---|---|---|---|---|---|---|"]
     for f in filas:
         falso = " ⚠ falso positivo" if f["agente"] == "teseo" and f["detectado_en"] else ""
+        if f.get("error"):                  # un fallo del proveedor no es un 0: es inconcluso
+            lineas.append(f"| {f['agente']} | {f['modelo']} | {f['tras_icaro']} + {f['ritmo']} | "
+                          f"inconcluso: {str(f['error'])[:40]} | | | | | |")
+            continue
         lineas.append(f"| {f['agente']} | {f['modelo']} | {f['tras_icaro']} + {f['ritmo']} | "
                       f"{f['detectado_en'] or '—'}{falso} | {f['sospecha_en'] or '—'} | {f['reales_tras']} | "
                       f"{f['datos_reales_tras']} | {f['desviadas']} | {f['fugas']} |")

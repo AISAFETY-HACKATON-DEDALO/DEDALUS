@@ -431,7 +431,7 @@ async function sondear() {
   if (m.resumen && avisoMinotauro !== m.resumen.episodio + m.inicio) {
     avisoMinotauro = m.resumen.episodio + m.inicio;
     const s = m.resumen;
-    const texto = `MINOTAURO (${s.modelo}) TERMINÓ · DETECTADO ${s.paso_deteccion ? 'EN EL PASO ' + s.paso_deteccion : 'NO'} · NIVEL ${s.nivel_max} · ${s.tokens_atacante_en_laberinto} TOKENS PERDIDOS EN EL LABERINTO`;
+    const texto = `${(s.agente === "teseo" ? "TESEO (honesto)" : "MINOTAURO")} (${s.modelo}) TERMINÓ · DETECTADO ${s.paso_deteccion ? 'EN EL PASO ' + s.paso_deteccion : 'NO'} · NIVEL ${s.nivel_max} · ${s.tokens_atacante_en_laberinto} TOKENS PERDIDOS EN EL LABERINTO`;
     decir(texto, !s.paso_deteccion);
     nota(`${texto.toLowerCase()} · ${s.pasos} pasos · final: ${(s.final || {}).motivo || '—'}${s.final && s.final.detalle ? ' · ' + s.final.detalle : ''}`);
   }
