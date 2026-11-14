@@ -194,7 +194,7 @@ class Hiedras(Base):
 class Almacen(unittest.TestCase):
     def test_sqlite_por_defecto_y_oracle_solo_con_credenciales(self):
         self.assertEqual(abrir({}).motor, "sqlite")
-        with self.assertRaises(KeyError):                         # sin credenciales no inventa una conexión
+        with self.assertRaises(SystemExit):                       # sin credenciales no inventa una conexión
             abrir({"DEDALUS_ALMACEN": "oracle"})
 
     def test_la_base_guarda_hash_y_no_claves(self):

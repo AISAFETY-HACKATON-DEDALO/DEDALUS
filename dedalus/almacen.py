@@ -137,6 +137,10 @@ class AlmacenOracle(Almacen):
 def abrir(entorno=None):
     e = os.environ if entorno is None else entorno
     if e.get("DEDALUS_ALMACEN", "sqlite").lower() == "oracle":
+        faltan = [v for v in ("CNOSOS_DB_USUARIO", "CNOSOS_DB_CLAVE", "CNOSOS_DB_DSN") if not e.get(v)]
+        if faltan:
+            raise SystemExit("Para usar Oracle faltan estas variables de entorno: " + ", ".join(faltan)
+                             + ". Defínelas en esta misma ventana de PowerShell, o quita DEDALUS_ALMACEN para usar SQLite.")
         return AlmacenOracle(e["CNOSOS_DB_USUARIO"], e["CNOSOS_DB_CLAVE"], e["CNOSOS_DB_DSN"],
                              e.get("CNOSOS_WALLET_DIR"), e.get("CNOSOS_WALLET_CLAVE"))
     return AlmacenSQLite(e.get("DEDALUS_SQLITE", ":memory:"))
