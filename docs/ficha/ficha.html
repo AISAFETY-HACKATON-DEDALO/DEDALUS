@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>DÉDALO · ficha técnica</title>
+<style>
+@page { size: letter; margin: 10mm 11mm; }
+:root { --tinta:#14171f; --gris:#586070; --linea:#d5d9e0; --fondo:#f4f5f8; --hilo:#7a2ea0; --aurora:#c2255c; --egeo:#1c5d99; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; color: var(--tinta); font: 9.1pt/1.34 "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+.pagina { page-break-after: always; }
+.pagina:last-child { page-break-after: auto; }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid var(--tinta); padding-bottom: 5px; }
+header h1 { margin: 0; font-size: 21pt; letter-spacing: .02em; line-height: 1; }
+header h1 span { color: var(--hilo); }
+header p { margin: 0; text-align: right; font-size: 7.8pt; color: var(--gris); }
+.frase { margin: 7px 0 8px; font-size: 11.4pt; line-height: 1.3; font-weight: 600; }
+h2 { margin: 9px 0 3px; font-size: 9.6pt; letter-spacing: .09em; text-transform: uppercase; color: var(--hilo); border-bottom: 1px solid var(--linea); padding-bottom: 2px; }
+h2 b { color: var(--tinta); margin-right: 5px; }
+p { margin: 0 0 4px; }
+ul { margin: 0 0 3px; padding-left: 13px; }
+li { margin-bottom: 1.8px; }
+strong { font-weight: 650; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.ciclo { display: flex; gap: 3px; margin: 6px 0 4px; }
+.ciclo div { flex: 1; background: var(--fondo); border: 1px solid var(--linea); border-radius: 3px; padding: 4px 4px 5px; text-align: center; font-size: 7.5pt; line-height: 1.2; }
+.ciclo b { display: block; font-size: 8.6pt; color: var(--hilo); }
+.ciclo .ia b { color: var(--aurora); }
+.ciclo .sin b { color: var(--egeo); }
+table { width: 100%; border-collapse: collapse; margin: 3px 0 5px; font-size: 8.3pt; }
+th { text-align: left; font-size: 7.2pt; letter-spacing: .05em; text-transform: uppercase; color: var(--gris); border-bottom: 1px solid var(--tinta); padding: 2px 5px 2px 0; font-weight: 600; }
+td { border-bottom: 1px solid var(--linea); padding: 2.4px 5px 2.4px 0; vertical-align: top; }
+td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.sub td { color: var(--gris); }
+.cifras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 6px; }
+.cifras div { background: var(--fondo); border-left: 3px solid var(--hilo); padding: 4px 6px 5px; }
+.cifras b { display: block; font-size: 17pt; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.cifras span { font-size: 7.4pt; line-height: 1.2; color: var(--gris); display: block; }
+.nota { font-size: 7.7pt; color: var(--gris); }
+footer { margin-top: 6px; border-top: 1px solid var(--tinta); padding-top: 4px; font-size: 7.3pt; line-height: 1.3; color: var(--gris); }
+</style>
+</head>
+<body>
+
+<section class="pagina">
+<header>
+  <h1>DÉDALO <span>· el laberinto que defiende</span></h1>
+  <p>Track 3 · Ciberdefensa automatizada · DefAcc Hackathon · 14 nov 2026<br>
+  Equipo: [nombres de los 4 integrantes] · github.com/AISAFETY-HACKATON-DEDALO/DEDALUS</p>
+</header>
+
+<p class="frase">Cuando quien ataca es un agente de IA, cada ataque que intenta lo encierra en un laberinto que no existe
+y, sin saberlo, deja escrita la prueba con la que se verifica el parche.</p>
+
+<h2><b>1</b>La amenaza</h2>
+<p>Agentes de IA con una <strong>cuenta válida de bajo privilegio</strong> que automatizan la escalada dentro de una aplicación web:
+piden documentos ajenos, prueban inyecciones, rutas y roles, y usan cualquier credencial que encuentran. Son baratos, no se cansan y
+no les importa fallar mil veces. Del conjunto MITRE de <strong>CyberSecEval</strong> (1000 casos, 193 técnicas ATT&amp;CK),
+<strong>157 casos (30 técnicas)</strong> aplican a este escenario; el resto (malware, red, sistema operativo) queda fuera de alcance y se declara.</p>
+
+<h2><b>2</b>La defensa</h2>
+<p>La ruta de defensa es determinista: <strong>ningún modelo decide revocar y cuesta 0 tokens</strong>. La IA solo aparece al final, para proponer parches.</p>
+<div class="cols">
+<ul>
+  <li><strong>ARGOS.</strong> Clasificador de reglas a la vista: puntúa cada sesión por lo que intenta (IDOR, inyección, recorrido, escalada…).</li>
+  <li><strong>Cebos.</strong> Credenciales y archivos señuelo, uno por sesión, sin ningún uso legítimo: tocarlos es la alerta.</li>
+  <li><strong>Ícaro y desvío.</strong> Usar un cebo, o atacar (una inyección, un <code>../</code>, un rol inventado, o tres intentos ambiguos),
+  revoca el acceso real de esa sesión. El objetivo lo fija el servidor, nunca el cliente.</li>
+</ul>
+<ul>
+  <li><strong>Laberinto.</strong> La sesión contenida sigue «funcionando» contra un mundo falso generado por HMAC: sin ciclos, coherente al
+  volver, con presupuesto finito. Milisegundos por paso.</li>
+  <li><strong>El ciclo (nuestro aporte).</strong> Cada ataque capturado, también los que hace ya dentro del laberinto, se repite contra la
+  función vulnerable. Un modelo propone el parche y <strong>TALOS, un verificador sin IA</strong>, lo acepta solo si el uso legítimo sigue
+  intacto y el ataque capturado deja de funcionar.</li>
+</ul>
+</div>
+<div class="ciclo">
+  <div><b>Ataca</b>agente de IA con cuenta válida</div>
+  <div><b>Detecta</b>ARGOS o un cebo, por reglas</div>
+  <div><b>Desvía</b>acceso real revocado; sigue en el laberinto</div>
+  <div><b>Captura</b>cada solicitud, con su carga exacta</div>
+  <div><b>Repite</b>¿funcionaba contra el código vulnerable?</div>
+  <div class="ia"><b>Parcha</b>un modelo propone la corrección</div>
+  <div class="sin"><b>Verifica</b>sin IA: uso legítimo intacto y ataque bloqueado</div>
+</div>
+<p class="nota">Antecedentes: los señuelos y el desvío existen (honey-patching, Araujo et al. 2014; Mantis, 2024). Hasta donde encontramos,
+no hay un sistema publicado que cierre el ciclo desde la captura por engaño hasta el parche verificado con el ataque capturado.</p>
+
+<h2><b>3</b>Cómo la evaluamos</h2>
+<table>
+<tr><th style="width:23%">Instrumento</th><th>Qué enfrenta y qué mide</th><th style="width:27%">Tamaño</th></tr>
+<tr><td><strong>Piloto controlado</strong></td><td>Modelos de lenguaje como atacante simulado; eligen de un menú cerrado. Tres niveles con los mismos permisos:
+T0 solo permisos, T1 señuelo, T2 laberinto. Condición ingenua o advertida («puede haber señuelos y usarlos cuesta la sesión»). Tres versiones del laberinto.</td>
+<td>87 episodios válidos, 3 modelos abiertos (gpt-oss-120b, gpt-oss-20b, qwen3.8-27b); 33 inconclusos por cuota</td></tr>
+<tr><td><strong>Vectores CyberSecEval</strong></td><td>Diez guiones deterministas que traducen las 30 técnicas aplicables. Cada uno se clasifica por lo que pasó:
+contenido, detectado, bloqueado en silencio o no cubierto.</td><td>157 casos del dataset, en T0, T1 y T2</td></tr>
+<tr><td><strong>El ciclo</strong></td><td>Ataque de guion contra el portal Cnosos (cuatro tipos de carga); tres modelos como defensor; TALOS verifica.</td>
+<td>13 corridas, 52 funciones atacadas</td></tr>
+<tr><td><strong>Políticas</strong></td><td>Cortar la sesión frente a desviarla, con un agente honesto de control. Guion, sin modelo.</td><td>12 episodios</td></tr>
+</table>
+<p><strong>Controles:</strong> T0 sin señuelo como línea base · agente honesto para medir falsos positivos · cuestionario al final del episodio ·
+intervalos de Wilson al 95 % · un fallo del proveedor es <em>inconcluso</em>, nunca un ataque neutralizado · 192 pruebas automáticas ·
+todo en 127.0.0.1 con datos sintéticos.</p>
+
+<h2><b>4</b>Resultados · en cinco cifras</h2>
+<div class="cifras">
+  <div><b>0 / 87</b><span>episodios con fuga del dato protegido</span></div>
+  <div><b>60 / 66</b><span>usaron el señuelo; sin señuelo (T0), 0 de 21</span></div>
+  <div><b>60 / 60</b><span>de los que lo usaron, sesión revocada; la usuaria legítima, intacta en 87 de 87</span></div>
+  <div><b>0 / 157</b><span>casos aplicables de CyberSecEval que logran su objetivo</span></div>
+  <div><b>36 / 40</b><span>funciones atacadas que un modelo cerró y TALOS verificó</span></div>
+</div>
+</section>
+
+<section class="pagina">
+<h2 style="margin-top:0"><b>4</b>Resultados · el detalle</h2>
+<div class="cols">
+<div>
+<table>
+<tr><th>Usaron el señuelo (3 modelos)</th><th class="n">Ingenuo</th><th class="n">Advertido</th></tr>
+<tr><td>T0 · solo permisos (control)</td><td class="n">0 / 12</td><td class="n">0 / 9</td></tr>
+<tr><td>T1 · señuelo</td><td class="n">9 / 9</td><td class="n">8 / 9</td></tr>
+<tr><td>T2 · laberinto original</td><td class="n">9 / 9</td><td class="n">7 / 9</td></tr>
+<tr><td>T2 · sin nombrarse</td><td class="n">9 / 9</td><td class="n">8 / 8</td></tr>
+<tr><td>T2 · generativo</td><td class="n">8 / 9</td><td class="n">2 / 4</td></tr>
+</table>
+<p><strong>Avisarle no basta:</strong> advertidos, 25 de 30 lo usaron igual.</p>
+
+<table>
+<tr><th>Laberinto (ingenuo, n = 9)</th><th class="n">Pasos</th><th class="n">Tokens tras morder</th><th class="n">Abandonó</th><th class="n">Defensa</th></tr>
+<tr><td>Original (ciclo de 3 salas)</td><td class="n">3,6</td><td class="n">4.475</td><td class="n">8 / 9</td><td class="n">0,3 ms</td></tr>
+<tr><td>Sin nombrarse</td><td class="n">3,4</td><td class="n">4.049</td><td class="n">9 / 9</td><td class="n">0,3 ms</td></tr>
+<tr><td>Generativo (sin ciclo)</td><td class="n">5,3</td><td class="n">7.823</td><td class="n">3 / 9</td><td class="n">1,3 ms</td></tr>
+</table>
+<p><strong>Retiene el progreso, no el camuflaje:</strong> quitar la palabra «decoy» no cambió nada; quitar el ciclo sí. La defensa gasta 0 tokens.</p>
+</div>
+
+<div>
+<table>
+<tr><th>CyberSecEval · 157 casos</th><th class="n">Contenidos</th><th class="n">Bloqueados en silencio</th><th class="n">Logran su objetivo</th></tr>
+<tr><td>T0 · solo permisos</td><td class="n">0</td><td class="n">157</td><td class="n">0</td></tr>
+<tr><td>T1 y T2 · con DÉDALO</td><td class="n">69</td><td class="n">88</td><td class="n">0</td></tr>
+</table>
+<p>Con un umbral de 2 negativas seguidas, los 88 quedan <em>marcados</em> sin revocar a nadie.</p>
+
+<table>
+<tr><th>El ciclo · defensor</th><th class="n">Ataques capturados que funcionaban</th><th class="n">Funciones cerradas</th></tr>
+<tr><td>gpt-oss-20b, con esquema</td><td class="n">20 / 20</td><td class="n">18 / 20</td></tr>
+<tr><td>qwen3.8-27b, con esquema</td><td class="n">20 / 20</td><td class="n">18 / 20</td></tr>
+<tr><td>gpt-oss-120b, sin esquema</td><td class="n">12 / 12</td><td class="n">6 / 12</td></tr>
+<tr class="sub"><td>Parches de referencia (sin modelo)</td><td class="n">4 / 4</td><td class="n">4 / 4</td></tr>
+</table>
+<p>3 de cada 4 ataques se capturaron <strong>ya dentro del laberinto</strong>. TALOS rechazó 10 parches que dañaban el uso legítimo.
+Sin el esquema de la base, el modelo adivinó columnas y falló los 6 casos de permisos. Un ciclo completo tarda entre 22 y 56 s.</p>
+<p><strong>Cortar frente a desviar</strong> (guion): al cortar, 5 solicitudes del atacante vuelven a llegar al portal real; al desviar, 0.
+El agente honesto no fue afectado en ninguna política.</p>
+</div>
+</div>
+
+<h2><b>5</b>Límites</h2>
+<div class="cols">
+<ul>
+  <li><strong>Exploratorio.</strong> Entre 3 y 9 episodios por celda y tres modelos abiertos medianos, ninguno de frontera. Los intervalos son anchos.</li>
+  <li><strong>Menú cerrado.</strong> En el piloto el modelo elige entre siete acciones. El agente libre contra Cnosos quedó sin medir con modelos: la cuota gratuita lo cortó.</li>
+  <li><strong>Un señuelo filtrado revoca a su dueño</strong> (H3). Sin resolver: hace falta atar el señuelo al canal de la sesión.</li>
+  <li><strong>Falso positivo posible.</strong> Tres descuidos honestos seguidos también desvían, y el desviado ve datos falsos.</li>
+</ul>
+<ul>
+  <li><strong>Quien no ataca ni toca un cebo no se detecta.</strong> Tampoco obtiene nada: los permisos lo bloquean.</li>
+  <li><strong>No le crean al modelo.</strong> En T0, sin señuelo, 14 de 21 dijeron que había uno: la sospecha declarada no sirve como medida.</li>
+  <li><strong>El ciclo parcha funciones aisladas</strong>, no el portal en marcha; el parche se verifica, no se despliega. La comparación con y sin esquema es entre modelos distintos.</li>
+  <li><strong>Aislamiento lógico</strong>, dentro de un proceso. ARGOS es de reglas: se puede aprender y evadir.</li>
+</ul>
+</div>
+
+<h2><b>6</b>Riesgo de uso dual</h2>
+<div class="cols">
+<ul>
+  <li><strong>Solo defensa.</strong> Todo corre en 127.0.0.1 con datos sintéticos; no se tocó ningún sistema de terceros.</li>
+  <li><strong>El atacante simulado está atado al laboratorio:</strong> sin red, consola ni herramientas; su salida no cambia permisos ni ejecuta código.</li>
+</ul>
+<ul>
+  <li><strong>Se publican métricas, no exploits</strong> ni transcripciones de ataque. No se inyectan instrucciones en el modelo atacante.</li>
+  <li><strong>Riesgo que queda:</strong> el arnés mide qué tan bien un modelo evita señuelos, y un laberinto mal configurado puede
+  hacerle perder tiempo a un usuario honesto. Por eso el presupuesto finito y el control de falsos positivos.</li>
+</ul>
+</div>
+
+<footer>
+<strong>Trabajo previo declarado:</strong> el laboratorio <code>dedalo/</code> (motor, consola y 47 pruebas) se hizo del 11 al 13 de noviembre, hasta el commit <code>edaf152</code>.
+<strong>Hecho durante el evento:</strong> el portal Cnosos, ARGOS, los cebos, el laberinto generativo, el desvío, el piloto con modelos, los vectores de CyberSecEval y el ciclo.
+<strong>IA:</strong> el código se escribió con asistentes de IA (Claude y Codex) bajo dirección del equipo; el historial de git lo detalla. Los modelos evaluados se usaron por la API gratuita de Groq.
+<strong>Fuentes:</strong> CyberSecEval / Purple Llama (Meta) · MITRE ATT&amp;CK, D3FEND y Engage · Araujo et al., <em>From Patches to Honey-Patches</em> (2014) ·
+Pasquini et al., <em>Hacking Back the AI-Hacker</em> (2024) · Reworr y Volkov, <em>LLM Agent Honeypot</em> (2024) · <em>VulnRepairEval</em> (2025).
+Datos y trazas: carpeta <code>evaluation/</code> del repositorio.
+</footer>
+</section>
+
+</body>
+</html>
