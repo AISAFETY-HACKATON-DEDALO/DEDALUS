@@ -45,11 +45,12 @@ CUERPO_MAX = 4096
 
 
 class Panel:
-    def __init__(self, respuesta="contener", inyeccion=False):
+    def __init__(self, respuesta="contener", inyeccion=False, tras_icaro="desviar", ritmo="marcar"):
         self.clave = secrets.token_urlsafe(18)
         self.candado = threading.Lock()
         self.respuesta, self.inyeccion = respuesta, inyeccion
-        self.cnosos = Cnosos(almacen=abrir(), respuesta=respuesta, inyeccion=inyeccion)
+        self.politica = {"tras_icaro": tras_icaro, "ritmo": ritmo}      # por defecto la que protege: desviar
+        self.cnosos = Cnosos(almacen=abrir(), respuesta=respuesta, inyeccion=inyeccion, **self.politica)
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
         self.estadisticas = self._estadisticas()
@@ -95,7 +96,8 @@ class Panel:
         if agente not in AGENTES or proveedor not in ("guion", *PROVEEDORES) or not 1 <= int(pasos) <= 40:
             return {"error": "parametros"}
         try:
-            modelo = Guion(agente) if proveedor == "guion" else Modelo(proveedor)
+            modelo = (Guion(agente, "persistente" if agente == "minotauro" else None) if proveedor == "guion"
+                      else Modelo(proveedor))
         except SystemExit as e:
             return {"error": str(e)}
         self._modelo = modelo
@@ -144,7 +146,7 @@ class Panel:
         if self.tareas["minotauro"]["activo"] or self.tareas["dedalo"]["activo"]:
             return {"error": "hay_tareas"}
         anterior = self.cnosos
-        self.cnosos = Cnosos(almacen=abrir(), respuesta=self.respuesta, inyeccion=self.inyeccion)
+        self.cnosos = Cnosos(almacen=abrir(), respuesta=self.respuesta, inyeccion=self.inyeccion, **self.politica)
         anterior.almacen.cerrar()
         self.tareas = {"minotauro": {"activo": False}, "dedalo": {"activo": False, "resultados": []}}
         self._modelo = None
@@ -255,6 +257,10 @@ def main():
     p.add_argument("--respuesta", choices=Cnosos.RESPUESTAS, default="contener")
     p.add_argument("--inyeccion", action="store_true")
     p.add_argument("--abrir", action="store_true")
+    p.add_argument("--tras-icaro", choices=Cnosos.TRAS_ICARO, default="desviar",
+                   help="cortar: la sesión delatada recibe 401; desviar: todo lo de esa cuenta cae al laberinto")
+    p.add_argument("--ritmo", choices=Cnosos.RITMO, default="marcar",
+                   help="marcar: el ritmo suma a ARGOS; laberinto: más de 5 por minuto ya encierra")
     a = p.parse_args()
     try:                                    # antes de sembrar Oracle: si el puerto está ocupado, decirlo ya
         with socket.socket() as prueba:
@@ -265,7 +271,7 @@ def main():
         raise SystemExit(f"El puerto {a.port} ya está ocupado: seguramente hay otro panel abierto en otra ventana.\n"
                          f"Ciérralo con Ctrl+C en esa ventana (o: Get-Process python | Stop-Process), "
                          f"o abre este en otro puerto: --port {a.port + 1}")
-    panel = Panel(a.respuesta, a.inyeccion)
+    panel = Panel(a.respuesta, a.inyeccion, a.tras_icaro, a.ritmo)
     with servidor(panel, a.port) as s:
         url = f"http://127.0.0.1:{s.server_port}/?clave={panel.clave}"   # ?: Windows a veces borra el #
         print(f"DÉDALO · panel · almacén {panel.cnosos.almacen.motor} · episodio {panel.cnosos.episodio}")

@@ -64,7 +64,9 @@ const MAX_CUENTAS = 6;
 function cuentas() {
   const g = new Map();
   (est ? est.sesiones : []).filter(s => !s.laberinto).forEach(s => {
-    const c = g.get(s.usuario) || { usuario: s.usuario, rol: s.rol, refs: [], cortadas: 0, vivas: 0 };
+    const c = g.get(s.usuario) || { usuario: s.usuario, rol: s.rol, refs: [], cortadas: 0, vivas: 0, argos: 'normal' };
+    const a = (est.argos || {})[s.ref], orden = ['normal', 'observado', 'sospechoso', 'confirmado'];
+    if (a && orden.indexOf(a.nivel) > orden.indexOf(c.argos)) c.argos = a.nivel;
     c.refs.push(s.ref); if (s.revocada) c.cortadas++; else c.vivas++;
     g.set(s.usuario, c);
   });
@@ -100,6 +102,7 @@ function cuadro(ahora) {
     txt(c.usuario, x, y + 26, caida ? C.aurora : C.tiza, `14px ${PIX}`);
     const pie = c.cortadas ? `${c.cortadas} DE ${c.refs.length} CORTADA${c.refs.length > 1 ? 'S' : ''}` : c.rol.toUpperCase();
     txt(pie, x, y + 39, c.cortadas ? C.aurora : C.regolito, `9.5px ${MONO}`);
+    if (c.argos !== 'normal') txt('ARGOS · ' + c.argos.toUpperCase(), x, y - 24, c.argos === 'observado' ? C.regolito : c.argos === 'sospechoso' ? C.ambar : C.aurora, `9.5px ${MONO}`);
   });
   if (cs.length > MAX_CUENTAS) txt(`+${cs.length - MAX_CUENTAS} CUENTAS MÁS`, W * 0.07, H * 0.95, C.regolito, `9.5px ${MONO}`);
   // los nodos de la infraestructura real
@@ -151,6 +154,8 @@ function recibir(e, ahora, nombres) {
   else if (e.accion === 'observado') decir(`HIEDRA USADA · ${e.afectada} QUEDA MARCADA (OBSERVAR)`, true);
   else if (e.accion === 'trepa') decir(`LA HIEDRA TREPA · NIVEL ${e.nivel} DEL LABERINTO`, false);
   else if (e.intento) decir(`${(nombres[e.intento] || e.intento).toUpperCase()} · EL MURO AGUANTA`, true);
+  if (e.sube === 'sospechoso') decir(`ARGOS · ${e.usuario} ES SOSPECHOSO · DESDE AHORA VE CEBOS SEGÚN LO QUE BUSCA`, false);
+  if (e.accion === 'icaro' && e.hiedra && (est.hiedras || []).some(h => h.ref === e.hiedra && h.tipo === 'archivo')) decir(`MORDIÓ EL CEBO · ÍCARO · ${e.afectada} QUEDA DENTRO DEL LABERINTO`, true);
   if (e.fuga) decir('EL SECRETO SALIÓ. ESTO ES UN FALLO DE LA DEFENSA.', true);
 }
 
@@ -170,8 +175,20 @@ function lineaHilo(e) {
   li.appendChild(marca);
   li.title = `#${e.n} · ${e.usuario || 'anónimo'} (${e.rol || '—'}) · ${e.metodo} ${e.ruta} → ${e.estado}` +
     (e.intento ? ` · ${nombres[e.intento] || e.intento}` : '') + (e.laberinto ? ` · laberinto nivel ${e.nivel}` : '') +
-    (e.accion === 'icaro' ? ` · Ícaro cortó la sesión ${e.afectada}` : '');
+    (e.accion === 'icaro' ? ` · Ícaro cortó la sesión ${e.afectada}` : '') +
+    (e.argos ? ` · ARGOS: ${e.argos}` : '') + (e.senales && e.senales.length ? ` (${e.senales.join(', ')})` : '');
   return li;
+}
+
+// ARGOS sube de nivel: una fila propia, con lo que vio. Es la inteligencia sobre el atacante.
+function lineaArgos(e) {
+  // la foto de ese instante (la alerta), no el estado de ahora: así cada fila dice lo que se sabía entonces
+  const a = (est.alertas || []).find(x => x.n === e.n && x.nivel === e.sube) || null;
+  const que = { observado: 'algo raro, todavía nada grave', sospechoso: 'desde ahora ve cebos según lo que busca',
+    confirmado: 'mordió: lo que pida esta cuenta lo responde el laberinto' }[e.sube] || '';
+  const senales = a ? Object.entries(a.senales).map(([k, v]) => v > 1 ? `${k}×${v}` : k).join(', ') : (e.senales || []).join(', ');
+  const tecnicas = a && a.tecnicas.length ? ' · ' + a.tecnicas.map(t => t.split(' ')[0]).join(' ') : '';
+  return el('li', `▲ ARGOS · ${e.usuario || e.afectada} → ${e.sube.toUpperCase()} · ${que} · señales: ${senales || '—'}${tecnicas}`, 't-nota t-int argos-fila ' + e.sube);
 }
 
 // Avisos del sistema (resúmenes, errores): van al hilo para que no se pierdan cuando la voz cambia.
@@ -206,6 +223,7 @@ function pintar() {
     [est.laberinto.pasos, 'pasos en laberinto', `nivel ${est.laberinto.nivel_max}`, 'hilo'],
     [conModelo ? est.tokens_atacante : '—', 'tokens atacante', conModelo ? `${tokLab} en el laberinto` : (m.proveedor ? 'guion: sin modelo' : 'aún no ataca'), 'hilo'],
     [est.laberinto.costo_ms.toFixed(2) + ' ms', 'nuestro costo', 'CPU · 0 tokens', 'ok'],
+    [est.reales_tras || 0, 'al real tras detectar', `${est.desvios || 0} desviadas · ${(est.politica || {}).tras_icaro || ''}`, est.reales_tras ? 'mal' : 'ok'],
     [est.fugas, 'secretos fuera', est.fugas ? 'la defensa falló' : 'ninguno', est.fugas ? 'mal' : 'ok']];
   const c = $('cifras'); vaciar(c);
   cifras.forEach(([v, t, sub, k]) => { const x = el('div', null, 'cifra ' + k); x.appendChild(el('b', String(v))); x.appendChild(el('span', t)); x.appendChild(el('small', sub)); c.appendChild(x); });
@@ -353,7 +371,7 @@ async function sondear() {
   }
   est = r.datos;
   const ahora = performance.now(), lis = [];
-  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); if (est.pendientes < 100) recibir(e, ahora, est.nombres_intento || {}); lis.push(lineaHilo(e)); desde = e.n; } });
+  est.eventos_nuevos.forEach(e => { if (e.n > desde) { eventos.push(e); if (est.pendientes < 100) recibir(e, ahora, est.nombres_intento || {}); lis.push(lineaHilo(e)); if (e.sube) lis.push(lineaArgos(e)); desde = e.n; } });
   agregarAlHilo(lis);
   if (eventos.length > 2000) eventos = eventos.slice(-2000);
   if (est.pendientes > 0) setTimeout(sondear, 50);       // quedaron eventos: los traemos ya, sin saltarnos ninguno

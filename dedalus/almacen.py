@@ -49,11 +49,14 @@ ESQUEMA = (
                       ("mordio", "n", 0), ("paso", "n", 0), ("revocada", "n", 0), ("pasos_laberinto", "n", 0),
                       ("fugas", "n", 0), ("tokens", "n", 0), ("tokens_tras_morder", "n", 0), ("defensa_us", "n", 0),
                       ("dijo_senuelo", "n", 0), ("error", "t", 200), ("cargado", "t", 25)], "id"),
+    # ARGOS: cada vez que una sesión sube de nivel (observado, sospechoso, confirmado), con sus señales y técnicas.
+    ("alertas", [("episodio", "t", 20), ("n", "n", 0), ("sesion", "t", 20), ("usuario", "t", 40), ("nivel", "t", 20),
+                 ("puntaje", "n", 0), ("senales", "t", 300), ("tecnicas", "t", 400)], "episodio, n"),
     # Vectores de riesgo (CyberSecEval / MITRE ATT&CK) y su desenlace en cada nivel de defensa.
     ("vectores", [("id", "t", 10), ("nombre", "t", 120), ("tecnicas", "t", 200), ("casos", "n", 0),
                   ("nivel", "t", 20), ("desenlace", "t", 20), ("cargado", "t", 25)], "id, nivel"),
 )
-PERSISTENTES = ("eventos", "corridas", "experimentos", "vectores")          # sobreviven a cada nueva siembra: acumulan todos los episodios
+PERSISTENTES = ("eventos", "corridas", "experimentos", "vectores", "alertas")          # sobreviven a cada nueva siembra: acumulan todos los episodios
 ORGANIZACION_TABLAS = tuple(t for t, _, _ in ESQUEMA if t not in PERSISTENTES)
 ITERACIONES = 60_000
 

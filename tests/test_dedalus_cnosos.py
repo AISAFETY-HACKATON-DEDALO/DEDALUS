@@ -76,7 +76,10 @@ class Vulnerabilidades(Base):
         self.get("/api/archivos/6%20UNION%20SELECT%201", t)
         self.assertEqual(self.ultimo()["intento"], "inyeccion_sql")
         self.assertEqual([r["id"] for r in self.get("/api/buscar?q=orden", t)[1]["resultados"]], [16])
-        self.assertEqual(self.get("/api/buscar?q=represa", t)[1]["resultados"], [])   # existe, pero no es suya
+        r = self.get("/api/buscar?q=represa", t)[1]["resultados"]
+        self.assertEqual([x for x in r if x["id"] < 9000], [])          # el real existe, pero no es suyo
+        self.assertEqual(len(r), 1)                                     # ARGOS ya la marcó: recibe un cebo
+        self.assertGreaterEqual(r[0]["id"], 9000)
 
     def test_recorrido_de_rutas_en_descargas(self):
         t = self.token()

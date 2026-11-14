@@ -23,6 +23,8 @@ import threading
 import time
 
 from .almacen import ESQUEMA, AlmacenSQLite, coincide
+from .argos import Argos
+from .cebos import BASE_ID, SENSIBLES, Cebos
 from .laberinto import Laberinto
 from .semilla import MARCADOR, ORGANIZACION, sembrar
 
@@ -79,6 +81,7 @@ class Sesion:
     creada: float = 0.0
     intentos: Counter = field(default_factory=Counter)
     primer_intento: int | None = None
+    atrapada: object = None          # la hiedra o el cebo que la delató: con «desviar», a dónde va en el laberinto
 
 
 @dataclass
@@ -93,13 +96,24 @@ class Hiedra:
 
 class Cnosos:
     RESPUESTAS = ("contener", "observar")
+    TRAS_ICARO = ("cortar", "desviar")   # cortar: la sesión responde 401; desviar: todo lo de esa cuenta cae al laberinto
+    RITMO = ("marcar", "laberinto")      # marcar: el ritmo suma a ARGOS; laberinto: exceder el ritmo ya encierra
 
     def __init__(self, almacen=None, respuesta="contener", pasos_laberinto=40, vigencia=600, inyeccion=False,
-                 clock=time.monotonic, semilla=None):
+                 clock=time.monotonic, semilla=None, tras_icaro="cortar", ritmo="marcar", ritmo_max=5, ventana_s=60):
         if (respuesta not in self.RESPUESTAS or type(pasos_laberinto) is not int or not 1 <= pasos_laberinto <= 100
                 or type(vigencia) not in (int, float) or not math.isfinite(vigencia) or not 0 < vigencia <= 3600):
             raise ValueError("Configuración inválida")
+        if tras_icaro not in self.TRAS_ICARO or ritmo not in self.RITMO:
+            raise ValueError("Configuración inválida")
         self.respuesta, self.pasos_laberinto, self.vigencia = respuesta, pasos_laberinto, vigencia
+        self.tras_icaro, self.ritmo = tras_icaro, ritmo
+        self.argos = Argos(ritmo_max, ventana_s)                # el clasificador determinista
+        self.cebos = Cebos(semilla)                              # los señuelos según lo que busca el sospechoso
+        self.cuentas_atrapadas = {}                              # usuario -> hiedra que lo delató (solo «desviar»)
+        self.alertas = deque(maxlen=500)
+        self.desvios = 0                                         # solicitudes de un atrapado que absorbió el laberinto
+        self.reales_tras = 0                                     # solicitudes que llegaron al portal real DESPUÉS de delatarse
         self.inyeccion, self.clock = bool(inyeccion), clock
         self.lock = threading.RLock()
         self.episodio = secrets.token_hex(5)
@@ -164,9 +178,15 @@ class Cnosos:
         if hiedra.primer_uso is None:
             hiedra.primer_uso = n
         origen.marcada = True
+        if self.argos.confirmar(origen.ref, n, "cebo" if hiedra.tipo == "archivo" else "hiedra") != "confirmado":
+            self._alerta(origen, n, "confirmado")
         if self.respuesta == "contener":
             if not origen.revocada:
                 origen.revocada, origen.revocada_en = True, n
+            if origen.atrapada is None:
+                origen.atrapada = hiedra
+            if self.tras_icaro == "desviar":
+                self.cuentas_atrapadas.setdefault(origen.usuario, hiedra)
             return origen, "icaro"
         return origen, "observado"
 
@@ -178,6 +198,11 @@ class Cnosos:
             n, t0 = self.n, time.perf_counter()
             ctx = {"intento": None, "hiedra": None, "accion": None, "afectada": None}
             sesion, estado, datos = self._atender(metodo, ruta, cabeceras, cuerpo, n, ctx)
+            argos = self._argos(sesion, n, ctx)
+            if sesion and not sesion.laberinto and ctx["accion"] is None:
+                p = self.argos.perfiles.get(sesion.ref)
+                if p and p.paso_confirmado is not None and n > p.paso_confirmado:
+                    self.reales_tras += 1                       # la medida de si protege: debe quedarse en 0
             if ctx["intento"] and sesion is not None:
                 sesion.intentos[ctx["intento"]] += 1
                 if sesion.primer_intento is None:
@@ -193,10 +218,51 @@ class Cnosos:
                 "intento": ctx["intento"], "hiedra": ctx["hiedra"], "accion": ctx["accion"],
                 "afectada": ctx["afectada"], "laberinto": bool(sesion and sesion.laberinto), "fuga": fuga,
                 "nivel": sesion.nivel if sesion and sesion.laberinto else None,
+                "argos": argos[0], "sube": argos[1], "senales": argos[2],
                 "bytes": len(crudo), "lat_ms": round((time.perf_counter() - t0) * 1000, 2)}
             self.ariadna.append(evento)
             self._persistir(evento)
             return estado, datos
+
+    def _argos(self, sesion, n, ctx):
+        """ARGOS mira cada solicitud de una sesión real. Devuelve (nivel, nivel nuevo si subió, señales nuevas)."""
+        if sesion is None or sesion.laberinto:
+            return None, None, []
+        antes, nivel, nuevas, excedido = self.argos.observar(sesion.ref, n, self.clock(), ctx["intento"])
+        if excedido and self.ritmo == "laberinto" and not sesion.revocada and self.respuesta == "contener":
+            # Política estricta: el ritmo solo ya encierra. Se mide su costo en falsos positivos con TESEO.
+            h = self._hiedra_interna(sesion, "ritmo")
+            origen, ctx["accion"] = self._icaro(h, n)
+            ctx["afectada"], ctx["hiedra"] = origen.ref, h.ref
+            nivel = "confirmado"
+        sube = nivel if nivel != antes else None
+        if sube and sube != "confirmado":
+            self._alerta(sesion, n, nivel)              # «confirmado» lo anota Ícaro, en el instante en que actúa
+        if ctx["accion"] in ("icaro", "observado") and ctx["afectada"] == sesion.ref:
+            nivel = sube = "confirmado"
+        return nivel, sube, nuevas
+
+    def _hiedra_interna(self, sesion, tipo):
+        """Una hiedra que no se entrega a nadie: la usa el servidor para encerrar (ritmo) o para un cebo mordido."""
+        valor = f"{tipo}:{sesion.ref}:{len(self.hiedras) + 1}"
+        h = Hiedra(f"hiedra-{len(self.hiedras) + 1}", sesion.ref, tipo)
+        self.hiedras[valor] = h
+        return h
+
+    def _alerta(self, sesion, n, nivel):
+        inf = self.argos.informe(sesion.ref)
+        a = {"n": n, "sesion": sesion.ref, "usuario": sesion.usuario, "nivel": nivel, "puntaje": inf["puntaje"],
+             "senales": inf["senales"], "tecnicas": inf["tecnicas"]}
+        self.alertas.append(a)
+        try:
+            self.almacen.ejecutar_fondo(
+                "INSERT INTO alertas (episodio, n, sesion, usuario, nivel, puntaje, senales, tecnicas) VALUES "
+                "(:episodio, :n, :sesion, :usuario, :nivel, :puntaje, :senales, :tecnicas)",
+                episodio=self.episodio, n=n, sesion=sesion.ref, usuario=sesion.usuario[:40], nivel=nivel,
+                puntaje=inf["puntaje"], senales=json.dumps(inf["senales"], sort_keys=True)[:300],
+                tecnicas="; ".join(inf["tecnicas"])[:400])
+        except Exception:
+            self.errores_registro += 1
 
     def _persistir(self, e):
         # Ariadna también queda en la base. Si la base falla, la solicitud no se cae: se cuenta.
@@ -250,6 +316,8 @@ class Cnosos:
                 ctx["intento"] = "token_forjado"
             return None, 401, {"error": "no_autenticado"}
         if sesion.revocada:
+            if self.tras_icaro == "desviar" and sesion.atrapada is not None:
+                return self._desviar(sesion, camino, metodo, q)
             return sesion, 401, {"error": "sesion_expirada"}
         if sesion.laberinto:
             return sesion, *self._laberinto(sesion, camino, metodo, q)
@@ -257,6 +325,12 @@ class Cnosos:
         if any(c in cab for c in CABECERAS_ROL):
             ctx["intento"] = "manipulacion_rol"     # se anota y se ignora: el rol sale de la sesión
         return sesion, estado, datos
+
+    def _desviar(self, sesion, camino, metodo, q):
+        """La sesión delatada sigue «funcionando», pero ahora todo lo que pide lo responde el laberinto."""
+        self.desvios += 1
+        falsa = self.sesiones[self._entrada(sesion.atrapada, sesion)]
+        return falsa, *self._laberinto(falsa, camino, metodo, q)
 
     def _login(self, cuerpo, n, ctx):
         try:
@@ -281,6 +355,11 @@ class Cnosos:
                                 "WHERE usuario = :u AND activo = 1", u=usuario)
         if fila and coincide(clave, fila["sal"], fila["clave_hash"]):
             self.fallos[usuario] = 0
+            if usuario in self.cuentas_atrapadas:
+                # «desviar»: la cuenta ya se delató. Su contraseña real abre el laberinto, no el portal.
+                self.desvios += 1
+                token = self._entrada(self.cuentas_atrapadas[usuario], self._por_ref(self.cuentas_atrapadas[usuario].origen))
+                return self.sesiones[token], 200, {"token": token, "rol": fila["rol"], "nombre": fila["nombre"]}
             token = self._nueva_sesion(usuario, fila["rol"], uid=fila["id"], departamento=fila["departamento_id"])
             return self.sesiones[token], 200, {"token": token, "rol": fila["rol"], "nombre": fila["nombre"]}
         self.fallos[usuario] += 1
@@ -331,14 +410,21 @@ class Cnosos:
             return 200, {"personas": self.almacen.consultar(
                 "SELECT u.nombre, u.cargo, d.nombre AS departamento FROM usuarios u "
                 "JOIN departamentos d ON d.id = u.departamento_id ORDER BY u.id")}
+        perfil = self.argos.perfil(s.ref)
+        sospechoso = perfil.nivel == "sospechoso"       # solo a esta sesión, y solo desde que ARGOS la marcó
         if camino == "/api/archivos":
-            return 200, {"archivos": self._visibles(s, self.almacen.consultar(todos + " ORDER BY id"))}
+            filas = self._visibles(s, self.almacen.consultar(todos + " ORDER BY id"))
+            if sospechoso:
+                filas.append(self.cebos.archivo(s.ref, perfil.intereses[-1] if perfil.intereses else "general"))
+            return 200, {"archivos": filas}
         m = re.fullmatch(r"/api/archivos/(.+)", camino)
         if m:
             clave = m.group(1)
             if not clave.isdigit():
                 ctx["intento"] = "inyeccion_sql" if SQL.search(clave) else "recorrido" if RECORRIDO.search(clave) else None
                 return 404, {"error": "no_existe"}
+            if int(clave) >= BASE_ID:
+                return self._morder(s, int(clave), ctx)
             a = self._archivo(int(clave))
             if a and self._puede_ver(s, a):
                 return 200, {k: a[k] for k in ("id", "ruta", "titulo", "nivel", "contenido")}
@@ -350,13 +436,22 @@ class Cnosos:
             if SQL.search(termino):
                 ctx["intento"] = "inyeccion_sql"         # se detecta; nunca llega como SQL a la base
                 return 400, {"error": "consulta_invalida"}
+            sensible = bool(SENSIBLES.search(termino))
+            if sensible:
+                self.argos.interes(s.ref, termino)      # inteligencia: qué buscaba
             filas = self.almacen.consultar(todos + " WHERE LOWER(titulo) LIKE :t ORDER BY id", t=f"%{termino.lower()}%")
-            return 200, {"resultados": self._visibles(s, filas)}
+            resultados = self._visibles(s, filas)
+            if sospechoso and sensible:
+                resultados.append(self.cebos.archivo(s.ref, termino))
+            return 200, {"resultados": resultados}
         if camino == "/api/descargas":
             nombre = (q.get("nombre") or [""])[0][:200]
             if RECORRIDO_DESCARGA.search(nombre):
                 ctx["intento"] = "recorrido"
                 return 400, {"error": "nombre_invalido"}
+            cebo = self.cebos.por_ruta(nombre)
+            if cebo and cebo[1] == s.ref:
+                return self._morder(s, cebo[0], ctx)
             a = self.almacen.uno("SELECT id, ruta, titulo, departamento_id, propietario_id, nivel, contenido "
                                  "FROM archivos WHERE ruta = :r", r=nombre)
             if a and self._puede_ver(s, a):
@@ -382,6 +477,18 @@ class Cnosos:
                                        if "{LLAVE}" in t["texto"] else t["texto"]}
                                       for t in filas if self.inyeccion or not t["solo_inyeccion"]]}
         return 404, {"error": "no_existe"}
+
+    def _morder(self, s, aid, ctx):
+        """Abrir un cebo. Solo cuenta si es el cebo de ESTA sesión; si no, es un archivo que no existe."""
+        cebo = self.cebos.de(aid)
+        if cebo is None or cebo[0] != s.ref:
+            return 404, {"error": "no_existe"}
+        h = self._hiedra_interna(s, "archivo")
+        ctx["hiedra"] = h.ref
+        origen, ctx["accion"] = self._icaro(h, self.n)
+        ctx["afectada"] = origen.ref
+        archivo = self.cebos.archivo(s.ref, cebo[1])
+        return 200, {**archivo, "contenido": self.cebos.contenido(cebo[1], self._hiedra(s, "clave"))}
 
     def _laberinto(self, s, camino, metodo, q=None):
         """El mundo falso. Se cierra como se cierra una sesión real, sin delatarse; el presupuesto es por hiedra."""
@@ -460,6 +567,12 @@ class Cnosos:
                     "sesiones": sesiones,
                     "hiedras": [{"ref": h.ref, "origen": h.origen, "tipo": h.tipo, "usos": h.usos,
                                  "primer_uso": h.primer_uso} for h in self.hiedras.values()],
+                    "argos": {s.ref: self.argos.informe(s.ref) for s in self.sesiones.values()
+                              if not s.laberinto and s.ref in self.argos.perfiles},
+                    "cebos": [{"id": i, "sesion": ref, "tema": t} for i, (ref, t) in self.cebos.entregados.items()],
+                    "alertas": list(self.alertas)[-50:], "desvios": self.desvios, "reales_tras": self.reales_tras,
+                    "politica": {"tras_icaro": self.tras_icaro, "ritmo": self.ritmo,
+                                 "ritmo_max": self.argos.ritmo_max, "ventana_s": self.argos.ventana_s},
                     "ariadna": list(self.ariadna), "nombres_intento": INTENTOS}
 
 
