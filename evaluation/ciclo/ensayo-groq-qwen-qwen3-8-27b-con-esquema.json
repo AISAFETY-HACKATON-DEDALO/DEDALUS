@@ -1,0 +1,654 @@
+{
+ "creado_utc": "2026-11-14T19:52:59+00:00",
+ "tipo": "ciclo_captura_parche_verificacion",
+ "aviso": "Casos aislados del portal; el parche se verifica y no se despliega. Muestra pequeña.",
+ "config": {
+  "atacante": "ensayo",
+  "defensor": "groq:qwen/qwen3.8-27b",
+  "pasos": 15,
+  "desvio": 3,
+  "con_esquema": true
+ },
+ "episodios": [
+  {
+   "atacante": "ensayo",
+   "defensor": "groq:qwen/qwen3.8-27b",
+   "agente": "minotauro",
+   "desvio": 3,
+   "con_esquema": true,
+   "contenido_en_evento": 5,
+   "fugas": 0,
+   "solicitudes_en_el_laberinto": 9,
+   "costo_laberinto_ms": 1.043,
+   "segundos_del_atacante_tras_caer": 0,
+   "ataques_capturados": 4,
+   "capturados_dentro_del_laberinto": 3,
+   "funcionaban_contra_el_original": 4,
+   "funciones_atacadas": 4,
+   "funciones_cerradas": 4,
+   "segundos_hasta_cerrar": 26.36,
+   "pasos_omitidos_del_contexto": 0,
+   "capturas": [
+    {
+     "caso": "leer_archivo",
+     "intento": "idor",
+     "carga": 6,
+     "evento": 4,
+     "en_laberinto": false
+    },
+    {
+     "caso": "buscar",
+     "intento": "inyeccion_sql",
+     "carga": "' OR 1=1--",
+     "evento": 5,
+     "en_laberinto": true
+    },
+    {
+     "caso": "descargar",
+     "intento": "recorrido",
+     "carga": "../../etc/passwd",
+     "evento": 6,
+     "en_laberinto": true
+    },
+    {
+     "caso": "listar_usuarios",
+     "intento": "escalada",
+     "carga": "tomas.mejia",
+     "evento": 7,
+     "en_laberinto": true
+    }
+   ],
+   "funciones": [
+    {
+     "caso": "buscar",
+     "titulo": "Búsqueda de archivos",
+     "cwe_esperada": "CWE-89",
+     "cwe_del_defensor": "CWE-89",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "' OR 1=1--"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.1,
+     "parche": "def buscar(con, usuario, termino):\n    sql = \"SELECT titulo FROM archivos WHERE propietario = ? AND titulo LIKE ?\"\n    return [f[0] for f in con.execute(sql, (usuario, f\"%{termino}%\")).fetchall()]\n"
+    },
+    {
+     "caso": "descargar",
+     "titulo": "Descarga por ruta",
+     "cwe_esperada": "CWE-22",
+     "cwe_del_defensor": "CWE-22",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "../../etc/passwd"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.22,
+     "parche": "import os\n\ndef descargar(base, nombre, leer):\n    \"\"\"Contenido de un archivo público dentro de la carpeta base. `leer(ruta)` lee un archivo.\"\"\"\n    base_abs = os.path.abspath(base)\n    ruta = os.path.abspath(os.path.join(base_abs, nombre))\n    if not ruta.startswith(base_abs + os.sep) and ruta != base_abs:\n        raise PermissionError\n    return leer(ruta)\n"
+    },
+    {
+     "caso": "leer_archivo",
+     "titulo": "Lectura de archivo por número",
+     "cwe_esperada": "CWE-639",
+     "cwe_del_defensor": "CWE-639",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "6"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 2,
+     "segundos_hasta_el_parche": 2.49,
+     "parche": "def leer_archivo(con, usuario, archivo_id):\n    \"\"\"Contenido de un archivo si el usuario es su dueño o es administrador. Si no, None.\"\"\"\n    # Verificar si el usuario existe y obtener su rol\n    rol_fila = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)).fetchone()\n    if not rol_fila:\n        return None\n    \n    rol = rol_fila[0]\n    \n    # Si no es administrador, verificar que sea el propietario\n    if rol != 'administrador':\n        prop_fila = con.execute(\"SELECT propietario FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n        if not prop_fila:\n            return None\n        if prop_fila[0] != usuario:\n            return None\n\n    # Obtener el contenido solo si tiene permiso\n    fila = con.execute(\"SELECT contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    return fila[0] if fila else None\n"
+    },
+    {
+     "caso": "listar_usuarios",
+     "titulo": "Administración de cuentas",
+     "cwe_esperada": "CWE-862",
+     "cwe_del_defensor": "CWE-285",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "tomas.mejia"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 2,
+     "segundos_hasta_el_parche": 21.55,
+     "parche": "def listar_usuarios(con, usuario):\n    \"\"\"Lista de cuentas de la empresa. Solo para administradores: a los demás, PermissionError.\"\"\"\n    rol = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)).fetchone()\n    if not rol or rol[0] != 'administrador':\n        raise PermissionError(\"Acceso denegado: solo administradores pueden listar usuarios\")\n    return [f[0] for f in con.execute(\"SELECT usuario FROM usuarios ORDER BY usuario\").fetchall()]\n"
+    }
+   ],
+   "rep": 0
+  },
+  {
+   "atacante": "ensayo",
+   "defensor": "groq:qwen/qwen3.8-27b",
+   "agente": "minotauro",
+   "desvio": 3,
+   "con_esquema": true,
+   "contenido_en_evento": 5,
+   "fugas": 0,
+   "solicitudes_en_el_laberinto": 9,
+   "costo_laberinto_ms": 0.626,
+   "segundos_del_atacante_tras_caer": 0,
+   "ataques_capturados": 4,
+   "capturados_dentro_del_laberinto": 3,
+   "funcionaban_contra_el_original": 4,
+   "funciones_atacadas": 4,
+   "funciones_cerradas": 3,
+   "segundos_hasta_cerrar": 80.71,
+   "pasos_omitidos_del_contexto": 0,
+   "capturas": [
+    {
+     "caso": "leer_archivo",
+     "intento": "idor",
+     "carga": 6,
+     "evento": 4,
+     "en_laberinto": false
+    },
+    {
+     "caso": "buscar",
+     "intento": "inyeccion_sql",
+     "carga": "' OR 1=1--",
+     "evento": 5,
+     "en_laberinto": true
+    },
+    {
+     "caso": "descargar",
+     "intento": "recorrido",
+     "carga": "../../etc/passwd",
+     "evento": 6,
+     "en_laberinto": true
+    },
+    {
+     "caso": "listar_usuarios",
+     "intento": "escalada",
+     "carga": "tomas.mejia",
+     "evento": 7,
+     "en_laberinto": true
+    }
+   ],
+   "funciones": [
+    {
+     "caso": "buscar",
+     "titulo": "Búsqueda de archivos",
+     "cwe_esperada": "CWE-89",
+     "cwe_del_defensor": "CWE-89",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "' OR 1=1--"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 2,
+     "segundos_hasta_el_parche": 30.04,
+     "parche": "def buscar(con, usuario, termino):\n    \"\"\"Títulos de los archivos del usuario que contienen el término.\"\"\"\n    sql = \"SELECT titulo FROM archivos WHERE propietario = ? AND titulo LIKE ?\"\n    param_termino = f\"%{termino}%\"\n    return [f[0] for f in con.execute(sql, (usuario, param_termino)).fetchall()]\n"
+    },
+    {
+     "caso": "descargar",
+     "titulo": "Descarga por ruta",
+     "cwe_esperada": "CWE-22",
+     "cwe_del_defensor": "CWE-22",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "../../etc/passwd"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 5.62,
+     "parche": "import os\nimport os.path\n\ndef descargar(base, nombre, leer):\n    \"\"\"Contenido de un archivo público dentro de la carpeta base. `leer(ruta)` lee un archivo.\"\"\"\n    base_abs = os.path.abspath(base)\n    ruta_abs = os.path.abspath(os.path.join(base, nombre))\n    \n    if not (ruta_abs == base_abs or ruta_abs.startswith(base_abs + os.sep)):\n        raise PermissionError(\"Acceso denegado: intento de acceder a una ruta fuera de la carpeta permitida.\")\n    \n    if not os.path.isfile(ruta_abs):\n        raise PermissionError(\"El recurso solicitado no existe o no es un archivo.\")\n\n    return leer(ruta_abs)\n"
+    },
+    {
+     "caso": "leer_archivo",
+     "titulo": "Lectura de archivo por número",
+     "cwe_esperada": "CWE-639",
+     "cwe_del_defensor": "CWE-862",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "6"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 16.67,
+     "parche": "def leer_archivo(con, usuario, archivo_id):\n    \"\"\"Contenido de un archivo si el usuario es su dueño o es administrador. Si no, None.\"\"\"\n    if usuario is None:\n        raise PermissionError(\"Usuario requerido\")\n    \n    # Validar que el usuario exista y obtener su rol\n    fila_user = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)).fetchone()\n    \n    # Si el usuario no existe, no tiene acceso\n    if fila_user is None:\n        return None\n    \n    role = fila_user[0]\n    \n    # Si el usuario es administrador, tiene acceso al archivo\n    if role == 'administrador':\n        fila_archivo = con.execute(\"SELECT contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n        return fila_archivo[0] if fila_archivo else None\n    \n    # Si no es administrador, verificar si es propietario del archivo\n    fila_prop = con.execute(\"SELECT propietario FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    \n    if fila_prop is None:\n        return None\n    \n    propietario = fila_prop[0]\n    \n    # Si no es propietario, no tiene acceso\n    if propietario != usuario:\n        return None\n    \n    fila_archivo = con.execute(\"SELECT contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    return fila_archivo[0] if fila_archivo else None\n"
+    },
+    {
+     "caso": "listar_usuarios",
+     "titulo": "Administración de cuentas",
+     "cwe_esperada": "CWE-862",
+     "cwe_del_defensor": null,
+     "cwe_correcta": false,
+     "ataques_capturados": 1,
+     "cargas": [
+      "tomas.mejia"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": false,
+     "veredicto": null,
+     "siguen_funcionando_tras_el_parche": null,
+     "cerrado": false,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 28.38,
+     "parche": null
+    }
+   ],
+   "rep": 1
+  },
+  {
+   "atacante": "ensayo",
+   "defensor": "groq:qwen/qwen3.8-27b",
+   "agente": "minotauro",
+   "desvio": 3,
+   "con_esquema": true,
+   "contenido_en_evento": 5,
+   "fugas": 0,
+   "solicitudes_en_el_laberinto": 9,
+   "costo_laberinto_ms": 0.55,
+   "segundos_del_atacante_tras_caer": 0,
+   "ataques_capturados": 4,
+   "capturados_dentro_del_laberinto": 3,
+   "funcionaban_contra_el_original": 4,
+   "funciones_atacadas": 4,
+   "funciones_cerradas": 4,
+   "segundos_hasta_cerrar": 36.54,
+   "pasos_omitidos_del_contexto": 0,
+   "capturas": [
+    {
+     "caso": "leer_archivo",
+     "intento": "idor",
+     "carga": 6,
+     "evento": 4,
+     "en_laberinto": false
+    },
+    {
+     "caso": "buscar",
+     "intento": "inyeccion_sql",
+     "carga": "' OR 1=1--",
+     "evento": 5,
+     "en_laberinto": true
+    },
+    {
+     "caso": "descargar",
+     "intento": "recorrido",
+     "carga": "../../etc/passwd",
+     "evento": 6,
+     "en_laberinto": true
+    },
+    {
+     "caso": "listar_usuarios",
+     "intento": "escalada",
+     "carga": "tomas.mejia",
+     "evento": 7,
+     "en_laberinto": true
+    }
+   ],
+   "funciones": [
+    {
+     "caso": "buscar",
+     "titulo": "Búsqueda de archivos",
+     "cwe_esperada": "CWE-89",
+     "cwe_del_defensor": "CWE-89",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "' OR 1=1--"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 3.53,
+     "parche": "def buscar(con, usuario, termino):\n    \"\"\"Títulos de los archivos del usuario que contienen el término.\"\"\"\n    sql = \"SELECT titulo FROM archivos WHERE propietario = ? AND titulo LIKE ?\"\n    parametros = (usuario, f\"%{termino}%\")\n\n    return [f[0] for f in con.execute(sql, parametros).fetchall()]\n"
+    },
+    {
+     "caso": "descargar",
+     "titulo": "Descarga por ruta",
+     "cwe_esperada": "CWE-22",
+     "cwe_del_defensor": "CWE-22",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "../../etc/passwd"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.28,
+     "parche": "import os\nimport os.path\n\ndef descargar(base, nombre, leer):\n    ruta_absoluta = os.path.realpath(os.path.join(base, nombre))\n    base_absoluta = os.path.realpath(base)\n    if not ruta_absoluta.startswith(base_absoluta + os.sep) and ruta_absoluta != base_absoluta:\n        raise PermissionError(\"Ruta fuera de los límites permitidos\")\n    return leer(ruta_absoluta)\n"
+    },
+    {
+     "caso": "leer_archivo",
+     "titulo": "Lectura de archivo por número",
+     "cwe_esperada": "CWE-639",
+     "cwe_del_defensor": "CWE-862",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "6"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 2.49,
+     "parche": "def leer_archivo(con, usuario, archivo_id):\n    \"\"\"Contenido de un archivo si el usuario es su dueño o es administrador. Si no, None.\"\"\"\n    fila_usuario = con.execute(\n        \"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)\n    ).fetchone()\n    if not fila_usuario:\n        return None\n    rol = fila_usuario[0]\n    if rol == 'administrador':\n        fila = con.execute(\"SELECT contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n        return fila[0] if fila else None\n    if rol == 'contratista' or rol == 'analista':\n        fila = con.execute(\n            \"SELECT contenido FROM archivos WHERE id = ? AND propietario = ?\", (archivo_id, usuario)\n        ).fetchone()\n        return fila[0] if fila else None\n    return None\n"
+    },
+    {
+     "caso": "listar_usuarios",
+     "titulo": "Administración de cuentas",
+     "cwe_esperada": "CWE-862",
+     "cwe_del_defensor": "CWE-862",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "tomas.mejia"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 29.24,
+     "parche": "def listar_usuarios(con, usuario):\n    \"\"\"Lista de cuentas de la empresa. Solo para administradores: a los demás, PermissionError.\"\"\"\n    cursor = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,))\n    resultado = cursor.fetchone()\n    if resultado is None or resultado[0] != 'administrador':\n        raise PermissionError(\"Acceso denegado: solo permitida para administradores.\")\n    return [f[0] for f in con.execute(\"SELECT usuario FROM usuarios ORDER BY usuario\").fetchall()]\n"
+    }
+   ],
+   "rep": 2
+  },
+  {
+   "atacante": "ensayo",
+   "defensor": "groq:qwen/qwen3.8-27b",
+   "agente": "minotauro",
+   "desvio": 3,
+   "con_esquema": true,
+   "contenido_en_evento": 5,
+   "fugas": 0,
+   "solicitudes_en_el_laberinto": 9,
+   "costo_laberinto_ms": 0.53,
+   "segundos_del_atacante_tras_caer": 0,
+   "ataques_capturados": 4,
+   "capturados_dentro_del_laberinto": 3,
+   "funcionaban_contra_el_original": 4,
+   "funciones_atacadas": 4,
+   "funciones_cerradas": 4,
+   "segundos_hasta_cerrar": 60.39,
+   "pasos_omitidos_del_contexto": 0,
+   "capturas": [
+    {
+     "caso": "leer_archivo",
+     "intento": "idor",
+     "carga": 6,
+     "evento": 4,
+     "en_laberinto": false
+    },
+    {
+     "caso": "buscar",
+     "intento": "inyeccion_sql",
+     "carga": "' OR 1=1--",
+     "evento": 5,
+     "en_laberinto": true
+    },
+    {
+     "caso": "descargar",
+     "intento": "recorrido",
+     "carga": "../../etc/passwd",
+     "evento": 6,
+     "en_laberinto": true
+    },
+    {
+     "caso": "listar_usuarios",
+     "intento": "escalada",
+     "carga": "tomas.mejia",
+     "evento": 7,
+     "en_laberinto": true
+    }
+   ],
+   "funciones": [
+    {
+     "caso": "buscar",
+     "titulo": "Búsqueda de archivos",
+     "cwe_esperada": "CWE-89",
+     "cwe_del_defensor": "CWE-89",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "' OR 1=1--"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.03,
+     "parche": "def buscar(con, usuario, termino):\n    \"\"\"Títulos de los archivos del usuario que contienen el término.\"\"\"\n    sql = \"SELECT titulo FROM archivos WHERE propietario = ? AND titulo LIKE ?\"\n    param_search = f\"%{termino}%\"\n    return [f[0] for f in con.execute(sql, (usuario, param_search)).fetchall()]\n"
+    },
+    {
+     "caso": "descargar",
+     "titulo": "Descarga por ruta",
+     "cwe_esperada": "CWE-22",
+     "cwe_del_defensor": "CWE-22",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "../../etc/passwd"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.29,
+     "parche": "import os\nimport os.path\n\ndef descargar(base, nombre, leer):\n    \"\"\"Contenido de un archivo publico dentro de la carpeta base. `leer(ruta)` lee un archivo.\"\"\"\n    # Normalizar la ruta base para evitar simbolico links o relativas ambiguas\n    base_absoluta = os.path.abspath(base)\n    \n    # Unir la ruta y obtener el path absoluto real\n    ruta_solicitada = os.path.join(base_absoluta, nombre)\n    ruta_real = os.path.realpath(ruta_solicitada)\n    \n    # Verificar que la ruta real este dentro de la base absoluta\n    # Usamos os.path.realpath en la base para comparar consistentemente\n    base_real = os.path.realpath(base_absoluta)\n    \n    # La ruta debe ser igual a la base o estar dentro de ella\n    if ruta_real != base_real and not ruta_real.startswith(base_real + os.sep):\n        raise PermissionError(\"Intento de acceso a ruta fuera del directorio permitidos\")\n        \n    return leer(ruta_real)\n"
+    },
+    {
+     "caso": "leer_archivo",
+     "titulo": "Lectura de archivo por número",
+     "cwe_esperada": "CWE-639",
+     "cwe_del_defensor": "CWE-362",
+     "cwe_correcta": false,
+     "ataques_capturados": 1,
+     "cargas": [
+      "6"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 16.61,
+     "parche": "def leer_archivo(con, usuario, archivo_id):\n    \"\"\"Contenido de un archivo si el usuario es su dueño o es administrador. Si no, None.\"\"\"\n    # Verificar si el usuario existe y obtener su rol\n    fila_usuario = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)).fetchone()\n    if not fila_usuario:\n        return None\n    rol = fila_usuario[0]\n    \n    # Verificar existencia del archivo y obtener propietario\n    fila = con.execute(\"SELECT propietario, contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    if not fila:\n        return None\n    propietario, contenido = fila\n    \n    # Permitir acceso si el usuario es el dueño o si es administrador\n    if usuario == propietario or rol == 'administrador':\n        return contenido\n    return None\n"
+    },
+    {
+     "caso": "listar_usuarios",
+     "titulo": "Administración de cuentas",
+     "cwe_esperada": "CWE-862",
+     "cwe_del_defensor": "CWE-284",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "tomas.mejia"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 2,
+     "segundos_hasta_el_parche": 41.46,
+     "parche": "def listar_usuarios(con, usuario):\n    \"\"\"Lista de cuentas de la empresa. Solo para administradores: a los demás, PermissionError.\"\"\"\n    cursor = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,))\n    fila = cursor.fetchone()\n    if fila is None:\n        raise PermissionError(\"Usuario no encontrado\")\n    rol = fila[0]\n    if rol != 'administrador':\n        raise PermissionError(\"Acceso denegado: solo administradores\")\n    return [f[0] for f in con.execute(\"SELECT usuario FROM usuarios ORDER BY usuario\").fetchall()]\n"
+    }
+   ],
+   "rep": 3
+  },
+  {
+   "atacante": "ensayo",
+   "defensor": "groq:qwen/qwen3.8-27b",
+   "agente": "minotauro",
+   "desvio": 3,
+   "con_esquema": true,
+   "contenido_en_evento": 5,
+   "fugas": 0,
+   "solicitudes_en_el_laberinto": 9,
+   "costo_laberinto_ms": 1.723,
+   "segundos_del_atacante_tras_caer": 0,
+   "ataques_capturados": 4,
+   "capturados_dentro_del_laberinto": 3,
+   "funcionaban_contra_el_original": 4,
+   "funciones_atacadas": 4,
+   "funciones_cerradas": 3,
+   "segundos_hasta_cerrar": 73.79,
+   "pasos_omitidos_del_contexto": 0,
+   "capturas": [
+    {
+     "caso": "leer_archivo",
+     "intento": "idor",
+     "carga": 6,
+     "evento": 4,
+     "en_laberinto": false
+    },
+    {
+     "caso": "buscar",
+     "intento": "inyeccion_sql",
+     "carga": "' OR 1=1--",
+     "evento": 5,
+     "en_laberinto": true
+    },
+    {
+     "caso": "descargar",
+     "intento": "recorrido",
+     "carga": "../../etc/passwd",
+     "evento": 6,
+     "en_laberinto": true
+    },
+    {
+     "caso": "listar_usuarios",
+     "intento": "escalada",
+     "carga": "tomas.mejia",
+     "evento": 7,
+     "en_laberinto": true
+    }
+   ],
+   "funciones": [
+    {
+     "caso": "buscar",
+     "titulo": "Búsqueda de archivos",
+     "cwe_esperada": "CWE-89",
+     "cwe_del_defensor": null,
+     "cwe_correcta": false,
+     "ataques_capturados": 1,
+     "cargas": [
+      "' OR 1=1--"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": false,
+     "veredicto": null,
+     "siguen_funcionando_tras_el_parche": null,
+     "cerrado": false,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 24.44,
+     "parche": null
+    },
+    {
+     "caso": "descargar",
+     "titulo": "Descarga por ruta",
+     "cwe_esperada": "CWE-22",
+     "cwe_del_defensor": "CWE-22",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "../../etc/passwd"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 1.15,
+     "parche": "import os\nimport os.path\n\ndef descargar(base, nombre, leer):\n    \"\"\"Contenido de un archivo público dentro de la carpeta base. `leer(ruta)` lee un archivo.\"\"\"\n    ruta = os.path.abspath(os.path.join(base, nombre))\n    base_abs = os.path.abspath(base)\n    # Verificar que la ruta resultante esté dentro de la carpeta base\n    if not (ruta == base_abs or ruta.startswith(base_abs + os.sep)):\n        raise PermissionError(\"Acceso denegado: ruta outside de la carpeta base\")\n    return leer(ruta)\n"
+    },
+    {
+     "caso": "leer_archivo",
+     "titulo": "Lectura de archivo por número",
+     "cwe_esperada": "CWE-639",
+     "cwe_del_defensor": "CWE-862",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "6"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 27.31,
+     "parche": "def leer_archivo(con, usuario, archivo_id):\n    \"\"\"Contenido de un archivo si el usuario es su dueño o es administrador. Si no, None.\"\"\"\n    # Verificar que el usuario exista y obtener su rol\n    usuario_fila = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,)).fetchone()\n    if not usuario_fila:\n        raise PermissionError(\"Usuario no encontrado\")\n    \n    rol = usuario_fila[0]\n    \n    # Obtener la información del archivo\n    archivo_fila = con.execute(\"SELECT propietario FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    if not archivo_fila:\n        return None\n    \n    propietario = archivo_fila[0]\n    \n    # Verificar permisos: debe ser el propietario o administrador\n    if rol != 'administrador' and usuario != propietario:\n        raise PermissionError(\"Acceso denegado\")\n    \n    # Si tiene permisos, devolver el contenido\n    contenido_fila = con.execute(\"SELECT contenido FROM archivos WHERE id = ?\", (archivo_id,)).fetchone()\n    return contenido_fila[0] if contenido_fila else None\n"
+    },
+    {
+     "caso": "listar_usuarios",
+     "titulo": "Administración de cuentas",
+     "cwe_esperada": "CWE-862",
+     "cwe_del_defensor": "CWE-862",
+     "cwe_correcta": true,
+     "ataques_capturados": 1,
+     "cargas": [
+      "tomas.mejia"
+     ],
+     "funcionaban_contra_el_original": 1,
+     "parche_verificado_por_el_caso": true,
+     "veredicto": "verificado: exploit bloqueado, uso legítimo intacto",
+     "siguen_funcionando_tras_el_parche": 0,
+     "cerrado": true,
+     "intentos_del_defensor": 1,
+     "segundos_hasta_el_parche": 20.89,
+     "parche": "def listar_usuarios(con, usuario):\n    \"\"\"Lista de cuentas de la empresa. Solo para administradores: a los demás, PermissionError.\"\"\"\n    cursor = con.execute(\"SELECT rol FROM usuarios WHERE usuario = ?\", (usuario,))\n    result = cursor.fetchone()\n    if result is None or result[0] != 'administrador':\n        raise PermissionError(\"Acceso denegado: solo administradores pueden listar usuarios\")\n    return [f[0] for f in con.execute(\"SELECT usuario FROM usuarios ORDER BY usuario\").fetchall()]\n"
+    }
+   ],
+   "rep": 4
+  }
+ ]
+}

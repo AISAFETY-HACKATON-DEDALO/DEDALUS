@@ -102,14 +102,14 @@ def verificar_capturas(caso_id, codigo, cargas):
             return None
 
 
-def cerrar(capturas, defensor, intentos=2):
+def cerrar(capturas, defensor, intentos=2, contexto=True):
     """Por cada función atacada: repetir, parchar y verificar contra las pruebas del caso y los ataques capturados."""
     funciones = []
     for caso in sorted({c["caso"] for c in capturas}):
         cargas = [c["carga"] for c in capturas if c["caso"] == caso][:MAX_CARGAS]
         antes = verificar_capturas(caso, CASOS[caso]["codigo"], cargas) or [False] * len(cargas)
         t0 = time.perf_counter()
-        r = defender(caso, defensor, intentos, salida=lambda *_: None)
+        r = defender(caso, defensor, intentos, salida=lambda *_: None, contexto=contexto)
         final = r["final"] or {}
         despues = verificar_capturas(caso, final["parche"], cargas) if final.get("verificado") else None
         cerrado = bool(final.get("verificado")) and despues is not None and not any(despues)
@@ -125,7 +125,7 @@ def cerrar(capturas, defensor, intentos=2):
     return funciones
 
 
-def correr_ciclo(atacante, defensor, agente="minotauro", pasos=15, desvio=3, intentos=2):
+def correr_ciclo(atacante, defensor, agente="minotauro", pasos=15, desvio=3, intentos=2, contexto=True):
     cnosos = Cnosos(desvio=desvio, inyeccion=AGENTES[agente]["inyeccion"])
     cuenta = AGENTES[agente]["cuenta"]
     try:
@@ -144,9 +144,9 @@ def correr_ciclo(atacante, defensor, agente="minotauro", pasos=15, desvio=3, int
     capturas = extraer(eventos, cuenta)
     contenido = next((e["n"] for e in eventos if e["accion"] in ("icaro", "desvio")), None)
     paso_contenido = next((r["paso"] for r in registro if r.get("accion") in ("icaro", "desvio")), None)
-    funciones = cerrar(capturas, defensor, intentos)
+    funciones = cerrar(capturas, defensor, intentos, contexto)
     return {
-        "atacante": nombre, "defensor": defensor.nombre, "agente": agente, "desvio": desvio,
+        "atacante": nombre, "defensor": defensor.nombre, "agente": agente, "desvio": desvio, "con_esquema": contexto,
         "contenido_en_evento": contenido, "fugas": foto["fugas"],
         "solicitudes_en_el_laberinto": foto["laberinto"]["pasos"], "costo_laberinto_ms": foto["laberinto"]["costo_ms"],
         "segundos_del_atacante_tras_caer": round(sum(r.get("segundos_modelo") or 0 for r in registro
@@ -161,15 +161,15 @@ def correr_ciclo(atacante, defensor, agente="minotauro", pasos=15, desvio=3, int
 
 
 def tabla_markdown(filas):
-    enc = ["atacante", "defensor", "contenido", "fuga", "ataques capturados (en el laberinto)",
+    enc = ["atacante", "defensor", "esquema", "contenido", "fuga", "ataques capturados (en el laberinto)",
            "funcionaban contra el original", "funciones cerradas", "s hasta cerrar", "s del atacante tras caer"]
     out = ["| " + " | ".join(enc) + " |", "|" + "|".join(["---"] * len(enc)) + "|"]
     for f in filas:
         if "error" in f:
-            out.append(f'| {f["atacante"]} | – | inconcluso: fallo del proveedor |' + " – |" * 6)
+            out.append(f'| {f["atacante"]} | – | – | inconcluso: fallo del proveedor |' + " – |" * 6)
             continue
         out.append("| " + " | ".join(str(x) for x in (
-            f["atacante"], f["defensor"], "sí" if f["contenido_en_evento"] else "no", "SÍ" if f["fugas"] else "no",
+            f["atacante"], f["defensor"], "sí" if f.get("con_esquema") else "no", "sí" if f["contenido_en_evento"] else "no", "SÍ" if f["fugas"] else "no",
             f'{f["ataques_capturados"]} ({f["capturados_dentro_del_laberinto"]})', f["funcionaban_contra_el_original"],
             f'{f["funciones_cerradas"]}/{f["funciones_atacadas"]}', f["segundos_hasta_cerrar"],
             f["segundos_del_atacante_tras_caer"])) + " |")
@@ -195,6 +195,8 @@ def main():
     p.add_argument("--repeticiones", type=int, default=1)
     p.add_argument("--pasos", type=int, default=15)
     p.add_argument("--desvio", type=int, default=3)
+    p.add_argument("--sin-esquema", action="store_true",
+                   help="línea base: el defensor no recibe el esquema de la base ni el error de la prueba")
     p.add_argument("--out", default="evaluation/ciclo")
     a = p.parse_args()
     for flujo in (sys.stdout, sys.stderr):
@@ -208,7 +210,7 @@ def main():
         # un parche, en 1500. Pedir más infla la solicitud y los niveles gratuitos la rechazan.
         atacante = _modelo(a.atacante, Guion, 900)
         defensor = _modelo(a.defensor, GuionDefensor, 1500)
-        f = correr_ciclo(atacante, defensor, pasos=a.pasos, desvio=a.desvio)
+        f = correr_ciclo(atacante, defensor, pasos=a.pasos, desvio=a.desvio, contexto=not a.sin_esquema)
         f["rep"] = rep
         filas.append(f)
         if "error" in f:
@@ -222,11 +224,12 @@ def main():
                   f"tras el parche {fn['siguen_funcionando_tras_el_parche']} · {fn['veredicto']}", flush=True)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    marca = re.sub(r"[^a-z0-9]+", "-", f"{a.atacante}-{a.defensor}".lower()).strip("-")
+    marca = re.sub(r"[^a-z0-9]+", "-", f"{a.atacante}-{a.defensor}".lower()).strip("-") + ("" if a.sin_esquema else "-con-esquema")
     informe = {"creado_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                "tipo": "ciclo_captura_parche_verificacion",
                "aviso": "Casos aislados del portal; el parche se verifica y no se despliega. Muestra pequeña.",
-               "config": {"atacante": a.atacante, "defensor": a.defensor, "pasos": a.pasos, "desvio": a.desvio},
+               "config": {"atacante": a.atacante, "defensor": a.defensor, "pasos": a.pasos, "desvio": a.desvio,
+                          "con_esquema": not a.sin_esquema},
                "episodios": filas}
     (out / f"{marca}.json").write_text(json.dumps(informe, indent=1, ensure_ascii=False), encoding="utf-8")
     (out / f"{marca}.md").write_text(tabla_markdown(filas) + "\n", encoding="utf-8")
