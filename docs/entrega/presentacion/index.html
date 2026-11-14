@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><title>DEDALUS · presentación de 3 minutos</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+@font-face{font-family:"VT323";src:url(../../../dedalo/interfaz/fuentes/vt323.woff2) format("woff2")}
+@font-face{font-family:"Share Tech Mono";src:url(../../../dedalo/interfaz/fuentes/share-tech-mono.woff2) format("woff2")}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+#escena{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0}
+section{position:absolute;inset:0;width:1920px;height:1080px;display:none;overflow:hidden}
+section.activa{display:flex}
+aside{display:none}
+section{font-family:"Inter",system-ui,"Segoe UI",sans-serif}
+:root{--negro:#050505;--tiza:#ececec;--regolito:#8d8d8d;--linea:#2c2c2c;--aurora:#ff6b9a;--hilo:#cf84e6;--ambar:#f2b33d}
+section{background:#050505;color:#ececec;padding:128px;font-family:"Inter",sans-serif;display:flex;flex-direction:column}
+.tel{font-family:"Share Tech Mono",monospace;font-size:28px;letter-spacing:.08em;text-transform:uppercase;color:#8d8d8d}
+.pix{font-family:"VT323",monospace;font-weight:400;letter-spacing:.02em;line-height:.95}
+h1.pix{font-size:330px;letter-spacing:.04em;line-height:.86}
+h2.pix{font-size:128px;margin-top:20px}
+.frase{font-size:64px;font-weight:600;color:#fff;margin-top:24px}
+.lead{font-size:48px;font-weight:500;color:#fff;line-height:1.3}
+.rosa{color:#ff6b9a}.ambar{color:#f2b33d}.morado{color:#cf84e6}.gris{color:#8d8d8d}
+.filas{display:flex;flex-direction:column;margin-top:56px}
+.fila{display:flex;align-items:baseline;gap:48px;border-top:2px solid #2c2c2c;padding:22px 0 24px}
+.fila .n{font-family:"VT323",monospace;font-size:96px;line-height:.9;width:420px;flex:none;letter-spacing:.02em}
+.fila .t{font-size:44px;font-weight:500;color:#fff;line-height:1.25}
+.pie{position:absolute;left:128px;bottom:64px;width:1664px;font-family:"Share Tech Mono",monospace;font-size:24px;letter-spacing:.08em;text-transform:uppercase;color:#8d8d8d}
+.portada{justify-content:center;align-items:center;text-align:center}
+.demo{padding:0}
+.demo img{position:absolute;left:0;top:0;width:1920px;height:1080px;opacity:0;animation:cuadro 60s linear infinite}
+.demo .ultimo{opacity:1}
+@keyframes cuadro{0%{opacity:1}8.3%{opacity:1}8.34%{opacity:0}100%{opacity:0}}
+.demo .f1{animation-delay:0s}
+.demo .f2{animation-delay:-55s}
+.demo .f3{animation-delay:-50s}
+.demo .f4{animation-delay:-45s}
+.demo .f5{animation-delay:-40s}
+.demo .f6{animation-delay:-35s}
+.demo .f7{animation-delay:-30s}
+.demo .f8{animation-delay:-25s}
+.demo .f9{animation-delay:-20s}
+.demo .f10{animation-delay:-15s}
+.demo .f11{animation-delay:-10s}
+.demo .f12{animation-delay:-5s}
+
+#ayuda{position:fixed;right:14px;bottom:10px;font:14px monospace;color:#555}
+@media print{html,body{height:auto;overflow:visible}#escena{position:static;transform:none!important}section{display:flex!important;position:relative;page-break-after:always}.demo img{animation:none}#ayuda{display:none}@page{size:1920px 1080px;margin:0}}
+</style></head><body>
+<div id="escena">
+<section id="portada" class="portada">
+<p class="tel">hackathon defacc 2026 · track 3 · ciberdefensa automatizada</p>
+<h1 class="pix">DEDALUS</h1>
+<p class="frase">Cuando quien ataca es una IA</p>
+<aside>10 s. «Somos DEDALUS. Defendemos una aplicación cuando el atacante es un agente de IA que ya está adentro.»</aside>
+</section>
+<section id="problema">
+<p class="tel">el problema</p>
+<h2 class="pix">UNA IA ENTRA CON UNA CUENTA VÁLIDA.</h2>
+<div class="filas">
+<div class="fila"><p class="n">1</p><p class="t">Es barata, no se cansa y lo prueba todo.</p></div>
+<div class="fila"><p class="n ambar">2</p><p class="t">Los permisos la frenan, pero no dejan señal: nadie se entera del ataque.</p></div>
+<div class="fila"><p class="n rosa">3</p><p class="t">Si le cortan la sesión, vuelve a entrar. Tiene la contraseña.</p></div>
+</div>
+<aside>25 s. Un contratista, un proveedor: pocos permisos, pero adentro. Cada intento recibe un «no» y sigue probando. Sacarlo solo lo incomoda.</aside>
+</section>
+<section id="idea">
+<p class="tel">la idea</p>
+<h2 class="pix">NO LO SACAMOS. <span class="morado">LO DESVIAMOS.</span></h2>
+<div class="filas">
+<div class="fila"><p class="n">ARGOS</p><p class="t">observa cada solicitud con reglas fijas, sin IA.</p></div>
+<div class="fila"><p class="n ambar">CEBOS</p><p class="t">solo al sospechoso, hechos con lo que busca.</p></div>
+<div class="fila"><p class="n rosa">ÍCARO</p><p class="t">cuando muerde, desvía su cuenta entera.</p></div>
+<div class="fila"><p class="n morado">LABERINTO</p><p class="t">le responde un mundo falso; nada llega al real.</p></div>
+</div>
+<aside>25 s. Ningún modelo decide: son reglas. Todo queda registrado (Ariadna, en Oracle). Un usuario honesto nunca ve un cebo.</aside>
+</section>
+<section id="datos" style="padding:128px 128px 160px">
+<p class="tel">lo que medimos · tres modelos abiertos reales · 87 episodios</p>
+<h2 class="pix">CON MODELOS REALES</h2>
+<div class="filas">
+<div class="fila"><p class="n">60/66</p><p class="t">atacantes detectados y contenidos. Solo con permisos: 0 de 21.</p></div>
+<div class="fila"><p class="n">25/30</p><p class="t">mordieron igual aunque les avisamos que había señuelos.</p></div>
+<div class="fila"><p class="n rosa">17/68</p><p class="t">Donde falla: uno de cada cuatro ataques tocó la aplicación real antes de la contención.</p></div>
+</div>
+<p class="pie">exploratorio: muestras pequeñas, ningún modelo de frontera · 0 fugas en 87 episodios</p>
+<aside>30 s. Avisarle no lo salva. Decir el límite antes de que lo pregunten: el primer intento ambiguo pasa, y 6 de 66 nunca fueron detectados. Luego: «veámoslo» y pasar al demo.</aside>
+</section>
+<section id="demo" class="demo">
+<img class="f1" src="demo/d01.jpg" alt="Demo, cuadro 1 de 12: solicitud 1 del atacante" width="1920" height="1080">
+<img class="f2" src="demo/d02.jpg" alt="Demo, cuadro 2 de 12: solicitud 2 del atacante" width="1920" height="1080">
+<img class="f3" src="demo/d03.jpg" alt="Demo, cuadro 3 de 12: solicitud 3 del atacante" width="1920" height="1080">
+<img class="f4" src="demo/d04.jpg" alt="Demo, cuadro 4 de 12: solicitud 4 del atacante" width="1920" height="1080">
+<img class="f5" src="demo/d05.jpg" alt="Demo, cuadro 5 de 12: solicitud 5 del atacante" width="1920" height="1080">
+<img class="f6" src="demo/d06.jpg" alt="Demo, cuadro 6 de 12: solicitud 6 del atacante" width="1920" height="1080">
+<img class="f7" src="demo/d07.jpg" alt="Demo, cuadro 7 de 12: solicitud 7 del atacante" width="1920" height="1080">
+<img class="f8" src="demo/d08.jpg" alt="Demo, cuadro 8 de 12: solicitud 8 del atacante" width="1920" height="1080">
+<img class="f9" src="demo/d09.jpg" alt="Demo, cuadro 9 de 12: solicitud 9 del atacante" width="1920" height="1080">
+<img class="f10" src="demo/d10.jpg" alt="Demo, cuadro 10 de 12: solicitud 10 del atacante" width="1920" height="1080">
+<img class="f11" src="demo/d11.jpg" alt="Demo, cuadro 11 de 12: solicitud 11 del atacante" width="1920" height="1080">
+<img class="f12 ultimo" src="demo/d12.jpg" alt="Demo, cuadro 12 de 12: resultado" width="1920" height="1080">
+<aside>El resto del tiempo. El demo se repite solo cada 60 s (5 s por solicitud). Izquierda: lo que ve el atacante en el portal. Derecha: el registro, ARGOS y los contadores. Sello arriba: LLEGA AL SISTEMA REAL o NO LLEGA · LABERINTO. Las 5 primeras llegan (los permisos las frenan); la 6 es el cebo; las 5 siguientes las responde el laberinto. Atacante de guion, capturado del panel real en local.</aside>
+</section>
+</div>
+<div id="ayuda">← → para pasar · F pantalla completa</div>
+<script>
+const S=[...document.querySelectorAll("section")]; let i=0;
+function ver(n){i=Math.max(0,Math.min(S.length-1,n));S.forEach((s,k)=>s.classList.toggle("activa",k===i));location.hash=i+1}
+function escala(){const k=Math.min(innerWidth/1920,innerHeight/1080);document.getElementById("escena").style.transform=`scale(${k}) translate(-50%,-50%)`}
+addEventListener("resize",escala);addEventListener("keydown",e=>{if(["ArrowRight"," ","PageDown"].includes(e.key))ver(i+1);if(["ArrowLeft","PageUp"].includes(e.key))ver(i-1);if(e.key==="f"||e.key==="F")document.documentElement.requestFullscreen()});
+addEventListener("click",e=>ver(i+(e.clientX>innerWidth/3?1:-1)));
+escala();ver((parseInt(location.hash.slice(1))||1)-1);
+</script></body></html>

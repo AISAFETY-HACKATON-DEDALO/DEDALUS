@@ -4,7 +4,7 @@
 
 **Qué es.** Una defensa para cuando quien ataca una aplicación web es una IA con una cuenta válida. Deja cebos que solo un atacante usaría, ajustados a lo que busca. Cuando muerde uno, todo lo de esa cuenta se desvía a un laberinto determinista que nos cuesta milisegundos y ningún token. Lo que intentó ahí dentro sirve para parchar, y cada parche se verifica sin IA. La organización y todo el registro viven en **Oracle Autonomous Database**.
 
-**Entregables:** ficha técnica (plantilla DefAcc, 2 páginas) [`docs/entrega/FICHA-DEDALUS.pdf`](docs/entrega/FICHA-DEDALUS.pdf) · video de la demo (2 min) [`docs/entrega/DEDALUS-demo.mp4`](docs/entrega/DEDALUS-demo.mp4) · resumen [`docs/ficha/RESUMEN.md`](docs/ficha/RESUMEN.md) · conclusiones [`docs/CONCLUSIONES.md`](docs/CONCLUSIONES.md) · guion del pitch en vivo [`docs/DEMO.md`](docs/DEMO.md)
+**Entregables:** ficha técnica (plantilla DefAcc, 2 páginas) [`docs/entrega/FICHA-DEDALUS.pdf`](docs/entrega/FICHA-DEDALUS.pdf) · video de la demo (2:34) [`docs/entrega/DEDALUS-demo.mp4`](docs/entrega/DEDALUS-demo.mp4) · presentación de 3 minutos [`PDF`](docs/entrega/PRESENTACION-DEDALUS.pdf) y [navegable, con el demo en bucle](docs/entrega/presentacion/index.html) · demo en bucle de 60 s [`docs/entrega/DEDALUS-demo-bucle.mp4`](docs/entrega/DEDALUS-demo-bucle.mp4) · resumen [`docs/ficha/RESUMEN.md`](docs/ficha/RESUMEN.md) · conclusiones [`docs/CONCLUSIONES.md`](docs/CONCLUSIONES.md) · guion del pitch en vivo [`docs/DEMO.md`](docs/DEMO.md)
 
 | Pregunta del jurado | Respuesta | Evidencia |
 |---|---|---|

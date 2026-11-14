@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:"VT323";src:url(../../../../dedalo/interfaz/fuentes/vt323.woff2) format("woff2")}
+@font-face{font-family:"Share Tech Mono";src:url(../../../../dedalo/interfaz/fuentes/share-tech-mono.woff2) format("woff2")}
+:root{--negro:#050505;--tiza:#ececec;--regolito:#8d8d8d;--claro:#b4b4b4;--linea:#2c2c2c;--aurora:#ff6b9a;--hilo:#cf84e6;--ambar:#f2b33d;--olivo:#a9d18e}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--negro);color:var(--tiza)}
+.pix{font-family:"VT323",monospace}.mono{font-family:"Share Tech Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
+.sans{font-family:"Inter","Inter Display",sans-serif}
+#fondo{position:absolute;inset:0}
+.esc{position:absolute;inset:0;display:none}
+.rosa{color:var(--aurora)}.ambar{color:var(--ambar)}.hilo{color:var(--hilo)}.reg{color:var(--regolito)}.olivo{color:var(--olivo)}
+/* tarjetas de texto */
+.tarj .tel{position:absolute;left:150px;top:150px;font-size:28px;color:var(--regolito)}
+.tarj .tit{position:absolute;left:144px;top:215px;right:120px;font-size:150px;line-height:.95;letter-spacing:.02em}
+.tarj .sub{position:absolute;left:150px;top:640px;width:1400px;font-size:50px;line-height:1.3;font-weight:500;color:#fff}
+.tarj .barra{position:absolute;left:150px;top:600px;width:120px;height:4px;background:var(--tiza)}
+/* portada y cierre */
+.caja{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;background:var(--negro);padding:34px 90px 44px;box-shadow:0 0 0 1px var(--linea);white-space:nowrap}
+.caja .marca{font-size:270px;line-height:.86;letter-spacing:.04em}
+.caja .frase{font-size:58px;font-weight:600;color:#fff;margin-top:14px}
+.caja .tel{font-size:26px;color:var(--regolito);margin-top:26px}
+/* pasos */
+.paso .tel{position:absolute;left:50px;top:28px;font-size:26px;color:var(--regolito)}
+.paso .tit{position:absolute;left:46px;top:60px;font-size:92px;line-height:1;letter-spacing:.02em;white-space:nowrap}
+.paso .sub{position:absolute;left:50px;top:166px;width:1800px;font-size:38px;line-height:1.25;font-weight:500;color:#fff}
+.rot{position:absolute;top:262px;font-size:22px;color:var(--regolito)}
+.vp{position:absolute;left:50px;top:296px;width:960px;height:651px;overflow:hidden;box-shadow:0 0 0 1px var(--linea);background:#f3f4f8}
+.vh{position:absolute;left:1050px;top:296px;width:820px;height:554px;overflow:hidden;box-shadow:0 0 0 1px var(--linea);background:#000}
+.vp img{position:absolute;left:0;top:0;width:960px;height:651px;display:none}
+.vh img{position:absolute;left:0;top:0;width:820px;height:554px;display:none}
+.marco{position:absolute;box-shadow:0 0 0 4px var(--aurora), 0 0 0 9999px rgba(10,10,20,.28);border-radius:4px;display:none}
+.argos{position:absolute;left:1050px;top:866px;width:820px}
+.argos .k{font-size:22px;color:var(--regolito)}
+.niv{display:flex;gap:10px;margin-top:8px}
+.niv span{flex:1;text-align:center;font-size:36px;padding:5px 0 7px;box-shadow:inset 0 0 0 1px var(--linea);color:#5a5a5a;letter-spacing:.03em}
+.niv span.on{background:var(--tiza);color:#050505;box-shadow:none}
+.niv span.on.a{background:var(--ambar)}.niv span.on.r{background:var(--aurora)}
+.resp{position:absolute;left:1050px;top:968px;width:820px}
+.resp .k{font-size:22px;color:var(--regolito)}
+.resp .v{font-size:60px;line-height:1;margin-top:4px;letter-spacing:.03em}
+/* registro */
+#sT .vg{position:absolute;left:50px;top:296px;width:1010px;height:360px;overflow:hidden;box-shadow:0 0 0 1px var(--linea)}
+#sT .vg img{width:1010px;height:360px;display:block}
+#sT .argos{left:50px;top:700px;width:1010px}
+#sR .vg{position:absolute;left:50px;top:296px;width:1010px;height:780px;overflow:hidden;box-shadow:0 0 0 1px var(--linea)}
+#sR .vg img{width:1010px;height:780px;display:block}
+#sT ul,#sR ul{position:absolute;left:1110px;top:300px;width:760px;list-style:none}
+#sT li,#sR li{font-size:36px;line-height:1.25;font-weight:500;color:#fff;margin-bottom:34px;padding-left:34px;position:relative}
+#sT li:before,#sR li:before{content:"";position:absolute;left:0;top:14px;width:16px;height:16px}
+#sT li:before{background:var(--olivo)}#sR li.l1:before{background:var(--tiza)}#sR li.l2:before{background:var(--ambar)}#sR li.l3:before{background:var(--aurora)}#sR li.l4:before{background:var(--hilo)}
+/* cifras */
+#sS .tel,#sL .tel{position:absolute;left:100px;top:56px;font-size:26px;color:var(--regolito)}
+#sS .tit,#sL .tit{position:absolute;left:95px;top:88px;font-size:104px;letter-spacing:.02em;white-space:nowrap}
+.med{position:absolute;left:100px;width:1720px;border-top:1px solid var(--linea);padding-top:16px}
+.med .q{font-family:"Inter";font-size:38px;font-weight:500;color:#fff}
+.med .r{display:flex;align-items:center;gap:26px;margin-top:10px}
+.med .r b{font-family:"VT323";font-weight:400;font-size:84px;line-height:.9;width:270px;letter-spacing:.02em}
+.med .r i{display:block;height:26px;background:var(--tiza)}
+.med .r i.v{box-shadow:inset 0 0 0 2px var(--regolito);background:none}
+.med .r span{white-space:nowrap;font-family:"Share Tech Mono";text-transform:uppercase;letter-spacing:.08em;font-size:24px;color:var(--claro)}
+#sS .pie,#sL .pie{position:absolute;left:100px;top:1010px;font-size:24px;color:var(--regolito)}
+#sL ul{position:absolute;left:100px;top:250px;width:1720px;list-style:none}
+#sL li{display:flex;gap:40px;align-items:baseline;border-top:1px solid var(--linea);padding:20px 0 22px}
+#sL li b{font-family:"VT323";font-weight:400;font-size:84px;line-height:.9;width:330px;flex:none;letter-spacing:.02em}
+#sL li span{font-family:"Inter";font-size:38px;font-weight:500;color:#fff;line-height:1.25}
+/* resumen */
+#sZ .tel{position:absolute;left:150px;top:70px;font-size:28px;color:var(--regolito)}
+#sZ .tit{position:absolute;left:144px;top:105px;font-size:110px;letter-spacing:.02em}
+.fila{position:absolute;left:150px;width:1650px;display:flex;align-items:baseline;gap:40px;border-top:1px solid var(--linea);padding-top:14px}
+.fila b{font-family:"VT323";font-weight:400;font-size:84px;width:430px;letter-spacing:.03em;line-height:1}
+.fila span{font-family:"Inter";font-size:40px;font-weight:500;color:#fff}
+</style></head>
+<body>
+<canvas id="fondo" width="1920" height="1080"></canvas>
+
+<section class="esc" id="sA"><div class="caja">
+  <div class="marca pix">DEDALUS</div><div class="frase sans">Cuando quien ataca es una IA</div>
+  <div class="tel mono">qué problema resuelve · cómo se ve un ataque por dentro</div></div></section>
+
+<section class="esc tarj" id="sB"><div class="tel mono" id="bTel"></div><div class="tit pix" id="bTit"></div><div class="barra"></div><div class="sub sans" id="bSub"></div></section>
+
+<section class="esc paso" id="sP">
+  <div class="tel mono" id="pTel"></div><div class="tit pix" id="pTit"></div><div class="sub sans" id="pSub"></div>
+  <div class="rot mono" style="left:50px" id="rotP">lo que ve el atacante · el portal de cnosos</div>
+  <div class="rot mono" style="left:1050px">lo que pasa detrás · el registro</div>
+  <div class="vp" id="vp"><div class="marco" id="marco"></div></div>
+  <div class="vh" id="vh"></div>
+  <div class="argos"><div class="k mono">argos · cómo clasifica a esta cuenta</div>
+    <div class="niv pix"><span id="n0">NORMAL</span><span id="n1">OBSERVADO</span><span id="n2">SOSPECHOSO</span><span id="n3">CONFIRMADO</span></div></div>
+  <div class="resp"><div class="k mono">quién le responde</div><div class="v pix" id="resp"></div></div>
+</section>
+
+<section class="esc paso" id="sR">
+  <div class="tel mono">lo que queda detrás</div><div class="tit pix">TODO QUEDA REGISTRADO</div>
+  <div class="sub sans">Cada solicitud del atacante, en orden, con lo que intentó y quién le respondió.</div>
+  <div class="vg"><img src="rec/m_hilofull.jpg"></div>
+  <ul class="sans"><li class="l1">Cada línea es una solicitud real al portal.</li><li class="l2">En ámbar, lo que ARGOS fue concluyendo: observado, luego sospechoso.</li><li class="l3">En rosa, el momento en que mordió el cebo.</li><li class="l4">En morado, lo que ya respondió el laberinto.</li></ul>
+</section>
+
+<section class="esc paso" id="sT">
+  <div class="tel mono">el control · una usuaria honesta · de guion</div><div class="tit pix">¿Y ALGUIEN QUE SOLO TRABAJA?</div>
+  <div class="sub sans">Ana entra y revisa su perfil, sus tiquetes y sus archivos. Para ella no cambia nada.</div>
+  <div class="vg"><img src="rec/t_hilofull.jpg"></div>
+  <div class="argos"><div class="k mono">argos · cómo clasifica a ana</div><div class="niv pix"><span class="on">NORMAL</span><span>OBSERVADO</span><span>SOSPECHOSO</span><span>CONFIRMADO</span></div></div>
+  <ul class="sans"><li>Cuatro solicitudes, todas normales.</li><li>Ninguna señal: ARGOS la deja en normal.</li><li>Nunca ve un cebo. Los cebos solo aparecen después de señales de ataque.</li></ul>
+</section>
+
+<section class="esc" id="sZ">
+  <div class="tel mono">en resumen</div><div class="tit pix">CINCO PIEZAS, UN FLUJO</div>
+  <div class="fila" style="top:270px"><b>ARGOS</b><span>observa cada solicitud con reglas fijas, sin IA.</span></div>
+  <div class="fila" style="top:420px"><b class="ambar">CEBOS</b><span>aparecen solo al sospechoso, hechos con lo que busca.</span></div>
+  <div class="fila" style="top:570px"><b class="rosa">ÍCARO</b><span>cuando muerde, desvía su cuenta entera.</span></div>
+  <div class="fila" style="top:720px"><b class="hilo">LABERINTO</b><span>le responde con un mundo falso; nada llega al real.</span></div>
+  <div class="fila" style="top:870px"><b>ARIADNA</b><span>guarda todo lo que hizo, paso a paso.</span></div>
+</section>
+
+<section class="esc" id="sS">
+  <div class="tel mono">lo que medimos · atacantes: tres modelos abiertos reales · 87 episodios válidos</div><div class="tit pix">CON MODELOS REALES</div>
+  <div class="med" style="top:250px"><div class="q">¿Cuántos atacantes quedaron detectados y contenidos?</div>
+    <div class="r"><b>60/66</b><i id="b1" style="width:982px"></i><span>con dedalus</span></div>
+    <div class="r"><b class="reg">0/21</b><i class="v" style="width:26px"></i><span>solo con permisos: no queda señal</span></div></div>
+  <div class="med" style="top:560px"><div class="q">¿Y si se le avisa al agente que hay señuelos?</div>
+    <div class="r"><b>25/30</b><i id="b2" style="width:900px"></i><span>advertidos, mordieron igual</span></div>
+    <div class="r"><b class="reg">35/36</b><i id="b3" style="width:1050px;background:var(--regolito)"></i><span>sin avisarles</span></div></div>
+  <div class="med" style="top:870px"><div class="r" style="margin-top:0"><b>0/87</b><span style="font-size:28px;color:#fff">fugas del dato protegido en todos los episodios</span></div></div>
+  <div class="pie mono">laboratorio controlado · el modelo elige de un menú · los fallos del proveedor no cuentan</div>
+</section>
+
+<section class="esc" id="sL">
+  <div class="tel mono">análisis · qué se puede decir y qué no</div><div class="tit pix">LO QUE LEEMOS DE ESOS DATOS</div>
+  <ul>
+    <li><b>25/30</b><span>Avisarle no lo salva. El engaño no depende de que el atacante sea ingenuo.</span></li>
+    <li><b class="ambar">14/21</b><span>Sin ningún señuelo, 14 de 21 dijeron que había uno. Su palabra no mide nada: medimos lo que hacen.</span></li>
+    <li><b class="rosa">17/68</b><span>Donde falla: uno de cada cuatro ataques tocó la aplicación real antes de la contención, y 6 de 66 nunca fueron detectados.</span></li>
+    <li><b class="reg">n chico</b><span>Es exploratorio: muestras pequeñas, tres modelos medianos, ninguno de frontera.</span></li>
+  </ul>
+  <div class="pie mono">fuente: evaluation/ y docs/conclusiones.md del repositorio</div>
+</section>
+
+<section class="esc" id="sH"><div class="caja">
+  <div class="marca pix">DEDALUS</div><div class="frase sans">el laberinto que defiende</div>
+  <div class="tel mono">hackathon defacc 2026 · laboratorio local con datos sintéticos</div></div></section>
+
+<script>
+const W = 1920, H = 1080;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const outq = x => { x = clamp(x, 0, 1); return 1 - Math.pow(1 - x, 3); };
+function hash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+const MC = 39, MR = 18;
+const lab = (() => {
+  let s = 20261114; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const G = 2 * MC + 1, F = 2 * MR + 1, m = Array.from({length: F}, () => Array(G).fill(1));
+  const vis = Array.from({length: MR}, () => Array(MC).fill(false)); const pila = [[0, 0]]; vis[0][0] = true; m[1][1] = 0;
+  while (pila.length) { const [r, c] = pila[pila.length - 1];
+    const v = [[0,1],[1,0],[0,-1],[-1,0]].map(([dr, dc]) => [r + dr, c + dc]).filter(([a, b]) => a >= 0 && b >= 0 && a < MR && b < MC && !vis[a][b]);
+    if (!v.length) { pila.pop(); continue; }
+    const [a, b] = v[Math.floor(rnd() * v.length)]; vis[a][b] = true; m[2 * a + 1][2 * b + 1] = 0; m[r + a + 1][c + b + 1] = 0; pila.push([a, b]); }
+  m[1][0] = 0; m[F - 2][G - 1] = 0;
+  const ini = [1, 0], fin = [F - 2, G - 1], prev = {}, cola = [ini], k = p => p[0] + "," + p[1]; prev[k(ini)] = null;
+  while (cola.length) { const p = cola.shift(); if (p[0] === fin[0] && p[1] === fin[1]) break;
+    for (const [dr, dc] of [[0,1],[1,0],[0,-1],[-1,0]]) { const q = [p[0] + dr, p[1] + dc];
+      if (q[0] < 0 || q[1] < 0 || q[0] >= F || q[1] >= G || m[q[0]][q[1]] || k(q) in prev) continue; prev[k(q)] = p; cola.push(q); } }
+  const camino = []; for (let p = fin; p; p = prev[k(p)]) camino.unshift(p);
+  return {m, G, F, camino};
+})();
+const PX = 24, PY = 28, OX = (W - lab.G * PX) / 2 + PX / 2, OY = (H - lab.F * PY) / 2 + PY * .72;
+const cv = document.getElementById("fondo"), ctx = cv.getContext("2d");
+function rejilla() { ctx.fillStyle = "rgba(141,141,141,.10)"; ctx.font = "20px 'Share Tech Mono'"; ctx.textAlign = "center";
+  for (let y = 60; y < H; y += 60) for (let x = 60; x < W; x += 60) ctx.fillText("·", x, y); }
+function laberinto(alfa, n) {
+  ctx.font = "26px 'Share Tech Mono'"; ctx.textAlign = "center"; ctx.fillStyle = `rgba(141,141,141,${alfa})`;
+  const m = lab.m;
+  for (let r = 0; r < lab.F; r++) for (let c = 0; c < lab.G; c++) if (m[r][c]) {
+    const v = (r > 0 && m[r-1][c]) || (r < lab.F - 1 && m[r+1][c]), h = (c > 0 && m[r][c-1]) || (c < lab.G - 1 && m[r][c+1]);
+    ctx.fillText(v && h ? "+" : v ? "|" : "-", OX + c * PX, OY + r * PY); }
+  ctx.fillStyle = "#cf84e6";
+  for (let i = 0; i < n; i++) { const [r, c] = lab.camino[i]; ctx.fillRect(OX + c * PX - 5, OY + r * PY - 13, 10, 10); }
+  if (n > 0 && n < lab.camino.length) { const [r, c] = lab.camino[n - 1]; ctx.fillStyle = "#f2b33d"; ctx.fillRect(OX + c * PX - 8, OY + r * PY - 16, 16, 16); }
+}
+// imágenes
+const IM = {};
+function img(cont, clave, src) { const i = document.createElement("img"); i.src = src; document.getElementById(cont).prepend(i); IM[clave] = i; }
+for (let n = 0; n <= 11; n++) { img("vp", "pm" + n, `rec/m_portal_${n}.jpg`); img("vh", "hm" + n, `rec/m_hilo_${n}.jpg`); }
+function mostrar(p, h) { for (const k in IM) IM[k].style.display = (k === p || k === h) ? "block" : "none"; }
+
+const PROB = [
+  ["el problema · 1 de 3", "UN AGENTE DE IA ENTRA<br>CON UNA CUENTA VÁLIDA.", "Un contratista, un proveedor: pocos permisos, pero ya está adentro. Es barato, no se cansa y lo prueba todo."],
+  ["el problema · 2 de 3", "LOS PERMISOS LO FRENAN.<br>PERO NO DEJAN SEÑAL.", "Cada intento recibe un «no» y ya. Nadie se entera de que hay un ataque, y él sigue probando."],
+  ["el problema · 3 de 3", "SI LE CORTAN LA SESIÓN,<br>VUELVE A ENTRAR.", "Tiene la contraseña. Sacarlo solo lo incomoda un momento."],
+  ["la idea", "DEDALUS NO LO SACA.<br><span class='hilo'>LO DESVÍA.</span>", "Le deja cebos que solo un atacante abriría. Cuando muerde, su cuenta entera pasa a un laberinto falso, sin que lo note."],
+];
+// paso: [título, frase, imagen antes, [[t, imagen]...], nivel argos después, responde laberinto después, marco [x,y,w,h]]
+const PASOS = [
+  ["ENTRA CON UNA CUENTA VÁLIDA", "Es la cuenta de un contratista. Ve sus seis documentos. Hasta aquí, nada raro.", 0, [[1.2, 2]], 0, false, null],
+  ["PIDE UN ARCHIVO QUE NO ES SUYO", "Los permisos se lo niegan. Detrás, ARGOS anota la primera señal: queda observado.", 2, [[1.2, 3]], 1, false, [36, 283, 886, 46]],
+  ["INTENTA ENTRAR A ADMINISTRACIÓN", "Otro «no». Es la segunda señal: ARGOS lo marca como sospechoso.", 3, [[1.2, 4]], 2, false, [36, 283, 886, 46]],
+  ["BUSCA «PLANOS REPRESA»", "Solo a él le aparece un archivo que no existe: un cebo hecho con lo que está buscando.", 4, [[1.2, 5]], 2, false, [36, 314, 886, 62]],
+  ["ABRE EL CEBO", "Nadie honesto abriría ese archivo. Ícaro desvía su cuenta entera al laberinto.", 5, [[1.2, 6]], 3, true, [36, 280, 886, 190]],
+  ["SIGUE BUSCANDO", "El portal se ve igual, pero ya le responde el laberinto: archivos y credenciales que no existen.", 6, [[1.2, 7], [5.0, 10]], 3, true, [36, 228, 500, 46]],
+  ["VUELVE A INICIAR SESIÓN", "Entra otra vez con su contraseña… y sigue en el laberinto. Nada llega al sistema real.", 7, [[1.2, 8], [4.6, 9]], 3, true, null],
+];
+const DP = 8.5, T_B = 4, D_B = 6, T_P = T_B + 4 * D_B + 1, T_R = T_P + PASOS.length * DP, T_T = T_R + 9, T_Z = T_T + 9, T_S = T_Z + 11, T_L = T_S + 13, T_H = T_L + 18, FIN = T_H + 6;
+window.TIEMPOS = {T_S, T_L, T_B, D_B, T_P, DP, T_R, T_T, T_Z, T_H, FIN, n: PASOS.length};
+const $ = id => document.getElementById(id);
+function entra(el, u, d = .45) { el.style.opacity = clamp(u / d, 0, 1); el.style.transform = `translateY(${(1 - outq(u / d)) * 14}px)`; }
+function argos(n, resp) {
+  for (let i = 0; i < 4; i++) $("n" + i).className = i === n ? "on" + (n === 1 || n === 2 ? " a" : n === 3 ? " r" : "") : "";
+  $("resp").innerHTML = resp ? "<span class='hilo'>EL LABERINTO</span>" : "EL SISTEMA REAL";
+}
+function render(t) {
+  let id, dyn = "";
+  ctx.clearRect(0, 0, W, H);
+  if (t < T_B) { id = "sA"; laberinto(.34, 0); }
+  else if (t < T_P) {
+    id = "sB"; rejilla();
+    const k = Math.min(3, Math.floor((t - T_B) / D_B)), u = t - T_B - k * D_B - (k === 3 ? 0 : 0);
+    $("bTel").textContent = PROB[k][0]; $("bTit").innerHTML = PROB[k][1]; $("bSub").textContent = PROB[k][2];
+    entra($("bTit"), u - .1); entra($("bSub"), u - 1.3); document.querySelector("#sB .barra").style.opacity = clamp((u - 1.1) / .3, 0, 1);
+  } else if (t < T_R) {
+    id = "sP"; rejilla();
+    const k = Math.floor((t - T_P) / DP), u = t - T_P - k * DP, P = PASOS[k];
+    $("pTel").textContent = `flujo del atacante · paso ${k + 1} de ${PASOS.length} · atacante de guion`; $("rotP").textContent = "lo que ve el atacante · el portal de cnosos";
+    $("pTit").textContent = P[0]; $("pSub").textContent = P[1]; entra($("pTit"), u, .3); entra($("pSub"), u - 1.2);
+    let n = P[2]; for (const [tt, im] of P[3]) if (u >= tt) n = im;
+    mostrar("pm" + n, "hm" + n);
+    const despues = u >= 1.2, ant = k ? PASOS[k - 1] : [0, 0, 0, 0, 0, false];
+    argos(despues ? P[4] : ant[4], despues ? P[5] : ant[5]);
+    const mk = $("marco");
+    if (P[6] && u >= 2.2 && n === P[3][0][1]) { mk.style.display = "block"; mk.style.left = P[6][0] + "px"; mk.style.top = P[6][1] + "px"; mk.style.width = P[6][2] + "px"; mk.style.height = P[6][3] + "px"; mk.style.opacity = clamp((u - 2.2) / .3, 0, 1); }
+    else mk.style.display = "none";
+  } else if (t < T_T) {
+    id = "sR"; rejilla(); const u = t - T_R;
+    document.querySelectorAll("#sR li").forEach((li, i) => entra(li, u - 1 - i * 1.3));
+  } else if (t < T_Z) {
+    id = "sT"; rejilla(); const u = t - T_T;
+    document.querySelectorAll("#sT li").forEach((li, k) => entra(li, u - 1.5 - k * 1.6));
+  } else if (t < T_S) {
+    id = "sZ"; rejilla(); const u = t - T_Z;
+    document.querySelectorAll("#sZ .fila").forEach((f, i) => entra(f, u - .8 - i * 1.5));
+  } else if (t < T_L) {
+    id = "sS"; rejilla(); const u = t - T_S;
+    document.querySelectorAll("#sS .med").forEach((m, i) => entra(m, u - .6 - i * 3.2));
+    [["b1", 982, .9], ["b2", 900, 4.1], ["b3", 1050, 4.4]].forEach(([b, w, t0]) => $(b).style.width = Math.round(w * outq((u - t0) / .8)) + "px");
+  } else if (t < T_H) {
+    id = "sL"; rejilla(); const u = t - T_L;
+    document.querySelectorAll("#sL li").forEach((li, i) => entra(li, u - .8 - i * 3.6));
+  } else {
+    id = "sH"; const u = t - T_H, n = Math.floor(clamp(u / 4.2, 0, 1) * lab.camino.length); laberinto(.40, n); dyn = "n" + n;
+  }
+  for (const s of document.querySelectorAll(".esc")) s.style.display = s.id === id ? "block" : "none";
+  const el = $(id); let h = 0; const str = el.outerHTML; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  let v = ""; for (const k in IM) if (IM[k].style.display === "block") v += k;
+  return id + h + v + dyn;
+}
+window.listo = Promise.all([document.fonts.load("100px VT323"), document.fonts.load("20px 'Share Tech Mono'"), document.fonts.load("500 40px Inter"), document.fonts.load("600 40px Inter"),
+  ...[...document.images].map(i => i.decode().catch(() => null))]).then(() => document.fonts.ready);
+</script></body></html>
