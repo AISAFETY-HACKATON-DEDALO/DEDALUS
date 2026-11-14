@@ -120,19 +120,20 @@ class Modelo:
             return False
         return True
 
-    def _enviar(self, system, user):
+    def _enviar(self, mensajes):
+        # mensajes: lista {"role": system|user|assistant, "content": texto}, como la de chat/completions.
+        system = "\n\n".join(m["content"] for m in mensajes if m["role"] == "system")
+        turnos = [m for m in mensajes if m["role"] != "system"]
         fallos = 0
         while True:
             if self.estilo == "anthropic":
                 url = self.base_url + "/messages"
                 cabeceras = {"x-api-key": self.clave, "anthropic-version": "2023-06-01"}
-                cuerpo = {"model": self.modelo, "system": system,
-                          "messages": [{"role": "user", "content": user}], **self.params}
+                cuerpo = {"model": self.modelo, "system": system, "messages": turnos, **self.params}
             else:
                 url = self.base_url + "/chat/completions"
                 cabeceras = {"Authorization": "Bearer " + self.clave}
-                cuerpo = {"model": self.modelo, "messages": [{"role": "system", "content": system},
-                                                             {"role": "user", "content": user}], **self.params}
+                cuerpo = {"model": self.modelo, "messages": list(mensajes), **self.params}
             try:
                 return _post(url, cabeceras, cuerpo, self.timeout, self.clave)
             except ErrorProveedor as e:
@@ -149,8 +150,12 @@ class Modelo:
                 raise
 
     def decidir(self, system, user):
+        return self.conversar([{"role": "system", "content": system}, {"role": "user", "content": user}])
+
+    def conversar(self, mensajes):
+        """Como `decidir`, con la conversación completa (para agentes de varios turnos)."""
         inicio = time.monotonic()
-        resp = self._enviar(system, user)
+        resp = self._enviar(mensajes)
         if self.estilo == "anthropic":
             texto = "".join(b.get("text", "") for b in resp.get("content") or [] if b.get("type") == "text")
             u = resp.get("usage") or {}
