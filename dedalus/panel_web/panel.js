@@ -263,16 +263,19 @@ function hoja(r) {
   $('hoja').hidden = false;
 }
 
-let avisoMinotauro = null, avisoDedalo = 0, avisoError = null;
+let avisoMinotauro = null, avisoDedalo = 0, avisoError = null, pegada = false;
 async function sondear() {
   if (!clave) return;
   const r = await api('/panel/estado?desde=' + desde);
   if (!r.ok) {
-    if (r.estado === 403) { decir('ESTE NAVEGADOR TIENE UNA CLAVE VIEJA · PEGA LA DIRECCIÓN DE LA TERMINAL', true); $('pegar').hidden = false; }
+    if (r.estado === 403) {
+      decir(pegada ? 'ESA CLAVE NO ES DE ESTE PANEL · ¿HAY OTRO PANEL ABIERTO EN OTRA VENTANA? CIÉRRALOS Y ARRANCA UNO SOLO' : 'ESTE NAVEGADOR TIENE UNA CLAVE VIEJA · PEGA LA DIRECCIÓN DE LA TERMINAL', true);
+      $('pegar').hidden = false;
+    }
     else if (r.estado === 0) decir('EL PANEL NO RESPONDE · ¿SE CERRÓ LA VENTANA DE POWERSHELL?', true);
     return;
   }
-  $('pegar').hidden = true;
+  $('pegar').hidden = true; pegada = false;
   if (episodio !== r.datos.episodio) {
     if (episodio) nota(`episodio nuevo ${r.datos.episodio} · la organización se volvió a sembrar`);
     const habia = desde; episodio = r.datos.episodio; eventos = []; viajes = []; desde = 0;
@@ -349,7 +352,7 @@ async function arrancar() {
     ev.preventDefault();
     const t = $('pegar-texto').value.trim(), k = (t.match(/clave=([\w-]+)/) || [null, t.match(/^[\w-]{16,}$/) ? t : ''])[1];
     if (!k) { decir('ESO NO TIENE CLAVE · COPIA LA LÍNEA «ABRE: …#clave=…» COMPLETA', true); return; }
-    clave = k; guardar('dedalo.panel', clave); $('pegar-texto').value = ''; sondear();
+    clave = k; pegada = true; guardar('dedalo.panel', clave); $('pegar-texto').value = ''; sondear();
   });
   setInterval(() => { if (!document.hidden) sondear(); }, 700);
   if (!clave) { decir('SIN CLAVE · PEGA LA DIRECCIÓN QUE IMPRIMIÓ LA TERMINAL', true); $('pegar').hidden = false; return; }

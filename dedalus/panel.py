@@ -11,7 +11,9 @@ from pathlib import Path
 import argparse
 import hmac
 import json
+import os
 import secrets
+import socket
 import threading
 import time
 import webbrowser
@@ -214,7 +216,19 @@ def servidor(panel, port=0):
         def log_message(self, *args):
             pass
 
-    return ThreadingHTTPServer(("127.0.0.1", port), Manejador)
+    return Servidor(("127.0.0.1", port), Manejador)
+
+
+class Servidor(ThreadingHTTPServer):
+    """En Windows, SO_REUSEADDR deja que DOS paneles escuchen el mismo puerto: el navegador habla con el viejo
+    y rechaza la clave nueva. Aquí el puerto es exclusivo: si ya hay un panel, este no arranca y lo dice."""
+    allow_reuse_address = os.name != "nt"
+    daemon_threads = True
+
+    def server_bind(self):
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def main():
@@ -224,6 +238,15 @@ def main():
     p.add_argument("--inyeccion", action="store_true")
     p.add_argument("--abrir", action="store_true")
     a = p.parse_args()
+    try:                                    # antes de sembrar Oracle: si el puerto está ocupado, decirlo ya
+        with socket.socket() as prueba:
+            if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                prueba.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            prueba.bind(("127.0.0.1", a.port))
+    except OSError:
+        raise SystemExit(f"El puerto {a.port} ya está ocupado: seguramente hay otro panel abierto en otra ventana.\n"
+                         f"Ciérralo con Ctrl+C en esa ventana (o: Get-Process python | Stop-Process), "
+                         f"o abre este en otro puerto: --port {a.port + 1}")
     panel = Panel(a.respuesta, a.inyeccion)
     with servidor(panel, a.port) as s:
         url = f"http://127.0.0.1:{s.server_port}/?clave={panel.clave}"   # ?: Windows a veces borra el #
