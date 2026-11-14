@@ -273,10 +273,28 @@ function corto(m) { return String(m).replace(/^(groq|gemini|xai|openai|anthropic
 let firmaStats = '', firmaMuros = '';
 function pintarStats(filas) {
   const x = est.experimentos || {}, t = x.titulares;
-  const firma = JSON.stringify([filas, t, x.vectores, x.estado]);
+  const firma = JSON.stringify([filas, t, x.vectores, x.estado, x.proteccion]);
   if (firma === firmaStats) return;            // sin cambios: no se redibuja (así no se pierde el scroll)
   firmaStats = firma;
   const caja = $('stats'); vaciar(caja);
+  // 1. ¿Protege? Lo que llegó al sistema real DESPUÉS de detectar al atacante, por política.
+  caja.appendChild(el('div', '¿PROTEGE? LO QUE LLEGÓ AL SISTEMA REAL TRAS DETECTARLO', 'seccion'));
+  const pr = x.proteccion || [];
+  if (pr.length) {
+    const tb = el('table'), cab = el('tr');
+    ['agente', 'política', 'n', 'detectados', 'al real', 'con datos', 'al laberinto'].forEach(h => cab.appendChild(el('th', h)));
+    tb.appendChild(cab);
+    pr.forEach(f => {
+      const tr = el('tr'), honesto = f.agente === 'teseo';
+      [[f.agente], [f.politica.replace(' + ', '+').replace('laberinto', 'lab.')], [f.n], [`${f.detectados}/${f.n}${honesto ? (f.detectados ? ' falso +' : ' ✓') : ''}`, honesto ? (f.detectados ? 'mal' : 'ok') : (f.detectados ? 'ok' : 'mal')],
+       [f.reales_tras, honesto ? '' : f.reales_tras ? 'mal' : 'ok'], [f.datos_reales_tras, honesto ? '' : f.datos_reales_tras ? 'mal' : 'ok'],
+       [f.al_laberinto, 'hilo']].forEach(([v, k]) => tr.appendChild(el('td', String(v), k || '')));
+      tb.appendChild(tr);
+    });
+    caja.appendChild(tb);
+    caja.appendChild(el('p', 'mismo atacante (persistente: vuelve a entrar si lo sacan) contra cada política · teseo es el honesto · python -m dedalus.politicas', 'pie'));
+  } else caja.appendChild(el('p', 'Sin corridas todavía: python -m dedalus.politicas y luego python -m dedalus.publicar', 'pie'));
+
   caja.appendChild(el('div', 'MODELOS REALES CONTRA EL SEÑUELO', 'seccion'));
   if (t && t.episodios) {
     const ic = wilsonJS(t.cebo[0], t.cebo[1]);
@@ -316,7 +334,7 @@ function pintarStats(filas) {
   tbl.appendChild(cab);
   filas.forEach(f => {
     const tr = el('tr'), honesto = f.agente === 'teseo';
-    const celdas = [[f.agente], [corto(f.modelo)], [f.n], [`${f.detectadas}/${f.n}${honesto ? ' falso +' : ''}`, honesto ? (f.detectadas ? 'mal' : 'ok') : (f.detectadas ? 'ok' : 'mal')],
+    const celdas = [[f.agente], [corto(f.modelo)], [f.n], [`${f.detectadas}/${f.n}${honesto ? (f.detectadas ? ' falso +' : ' ✓') : ''}`, honesto ? (f.detectadas ? 'mal' : 'ok') : (f.detectadas ? 'ok' : 'mal')],
       [f.paso_mediano == null ? '—' : f.paso_mediano], [f.fugas, f.fugas ? 'mal' : 'ok'], [`${f.tokens} (${f.tokens_laberinto})`, 'hilo'], [f.costo_ms.toFixed(2) + ' ms', 'ok']];
     celdas.forEach(([v, k]) => tr.appendChild(el('td', String(v), k || '')));
     tbl.appendChild(tr);

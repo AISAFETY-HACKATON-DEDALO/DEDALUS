@@ -5,7 +5,8 @@ Es idempotente: volver a publicar solo agrega lo nuevo.
 
   evaluation/llm/episodios.jsonl        piloto con modelos reales (dedalo.piloto_llm)
   evaluation/vectores/vectores.json     vectores MITRE de CyberSecEval (dedalo.vectores)
-  results/bateria/episodios.jsonl       batería de agentes contra Cnosos (dedalus.bateria), si existe
+  evaluation/cnosos/episodios.jsonl     batería de agentes contra Cnosos (dedalus.bateria), si existe
+  evaluation/politicas/episodios.jsonl  ¿protege? el mismo atacante contra cuatro políticas (dedalus.politicas)
 
     python -m dedalus.publicar                 # con DEDALUS_ALMACEN=oracle_rest, queda en Oracle
     python -m dedalus.publicar --resumen       # solo muestra lo que ya hay en la base
@@ -25,7 +26,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 FUENTES = {
     "piloto_llm": RAIZ / "evaluation" / "llm" / "episodios.jsonl",
     "vectores": RAIZ / "evaluation" / "vectores" / "vectores.json",
-    "bateria": RAIZ / "results" / "bateria" / "episodios.jsonl",
+    "bateria": RAIZ / "evaluation" / "cnosos" / "episodios.jsonl",
+    "politicas": RAIZ / "evaluation" / "politicas" / "episodios.jsonl",
 }
 NIVELES = {"control": "T0 · permisos", "static": "T1 · espejo", "maze": "T2 · laberinto"}
 MUNDOS = {"verosimil": " · sin delatarse", "generativo": " · generativo"}
@@ -104,6 +106,25 @@ def publicar(almacen, fuentes=None, salida=print):
         hechos[fuente] = len(nuevas)
         if filas:
             salida(f"{fuente}: {len(nuevas)} nuevas · {len(ya)} ya estaban")
+    ruta = Path(fuentes.get("politicas", ""))
+    if "politicas" in fuentes and ruta.is_file():
+        filas = _lineas(ruta)
+        ya = {f["id"] for f in almacen.consultar("SELECT id FROM politicas")}
+        nuevas = [f for f in filas if f.get("id") and f["id"] not in ya]
+        for f in nuevas:
+            almacen.ejecutar(
+                "INSERT INTO politicas (id, agente, modelo, tras_icaro, ritmo, detectado, sospecha, reales_tras, "
+                "datos_reales_tras, al_laberinto, fugas, tokens, tokens_laberinto, error, cargado) VALUES (:id, :agente, "
+                ":modelo, :tras_icaro, :ritmo, :detectado, :sospecha, :reales_tras, :datos_reales_tras, :al_laberinto, "
+                ":fugas, :tokens, :tokens_laberinto, :error, :cargado)",
+                id=f["id"][:40], agente=f["agente"][:20], modelo=str(f["modelo"])[:80], tras_icaro=f["tras_icaro"][:10],
+                ritmo=f["ritmo"][:10], detectado=f.get("detectado_en"), sospecha=f.get("sospecha_en"),
+                reales_tras=int(f.get("reales_tras") or 0), datos_reales_tras=int(f.get("datos_reales_tras") or 0),
+                al_laberinto=int(f.get("desviadas") or 0), fugas=int(f.get("fugas") or 0), tokens=_num(f.get("tokens")),
+                tokens_laberinto=_num(f.get("tokens_laberinto")), error=(str(f["error"])[:120] if f.get("error") else None),
+                cargado=_ahora())
+        hechos["politicas"] = len(nuevas)
+        salida(f"politicas: {len(nuevas)} nuevas · {len(ya)} ya estaban")
     ruta = Path(fuentes.get("vectores", ""))
     if "vectores" in fuentes and ruta.is_file():
         datos = json.loads(ruta.read_text(encoding="utf-8"))
@@ -167,7 +188,16 @@ def resumen(almacen):
                  "control": [int(total.get("t0_k") or 0), int(total.get("t0_n") or 0)],
                  "tokens_tras_morder": _num(total.get("tras")),
                  "defensa_ms": round(float(total.get("defensa_us") or 0) / 1000, 2)}
-    return {"titulares": titulares, "tabla": tabla, "vectores": [
+    proteccion = [{"politica": f"{p['tras_icaro']} + {p['ritmo']}", "agente": p["agente"], "n": int(p["n"]),
+                   "detectados": int(p["detectados"] or 0), "reales_tras": int(p["reales"] or 0),
+                   "datos_reales_tras": int(p["datos"] or 0), "al_laberinto": int(p["lab"] or 0),
+                   "fugas": int(p["fugas"] or 0), "modelos": int(p["modelos"])}
+                  for p in almacen.consultar(
+                      "SELECT tras_icaro, ritmo, agente, COUNT(*) AS n, COUNT(detectado) AS detectados, "
+                      "SUM(reales_tras) AS reales, SUM(datos_reales_tras) AS datos, SUM(al_laberinto) AS lab, "
+                      "SUM(fugas) AS fugas, COUNT(DISTINCT modelo) AS modelos FROM politicas WHERE error IS NULL "
+                      "GROUP BY tras_icaro, ritmo, agente ORDER BY agente, tras_icaro, ritmo")]
+    return {"titulares": titulares, "tabla": tabla, "proteccion": proteccion, "vectores": [
         {"nivel": v["nivel"], "desenlace": v["desenlace"], "vectores": int(v["n"]), "casos": int(v["casos"] or 0)}
         for v in vectores]}
 
