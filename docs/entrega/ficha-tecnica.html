@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<style>
+@page{size:Letter;margin:13mm 14mm 12mm}
+*{box-sizing:border-box}
+body{font:10.6pt/1.36 "Helvetica Neue",Arial,sans-serif;color:#1b1d22;margin:0}
+h1{font-size:17pt;margin:0;letter-spacing:-.01em}
+.sub{color:#555;font-size:9pt;margin:2px 0 8px}
+h2{font-size:10.5pt;margin:9px 0 3px;padding-bottom:2px;border-bottom:1.5px solid #1b1d22;text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 5px}
+ul{margin:0 0 5px;padding-left:15px}li{margin:1.5px 0}
+b{font-weight:700}
+.flujo{display:flex;align-items:stretch;gap:0;margin:5px 0 6px;font-size:8.4pt}
+.flujo div{flex:1;border:1px solid #1b1d22;padding:4px 5px;background:#f4f4f2}
+.flujo div+div{border-left:none}
+.flujo b{display:block;font-size:8.8pt}
+.flujo .ojo{background:#fde9ef}.flujo .lab{background:#efe6f7}
+table{width:100%;border-collapse:collapse;font-size:8.8pt;margin:3px 0 5px}
+th,td{text-align:left;padding:3px 5px;border-bottom:1px solid #ccc;vertical-align:top}
+th{background:#1b1d22;color:#fff;font-weight:600}
+td.n{font-weight:700}
+.dos{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;break-inside:avoid}
+h2{break-after:avoid}
+.barras{font-size:8.6pt}
+.barra{display:grid;grid-template-columns:92px 1fr 54px;align-items:center;gap:6px;margin:2px 0}
+.barra i{display:block;height:9px;background:#d63a6c}
+.barra i.gris{background:#9a9a9a}
+.pie{font-size:7.8pt;color:#555;margin-top:6px;border-top:1px solid #ccc;padding-top:4px}
+.salto{break-before:page}
+.nota{font-size:8.4pt;color:#444}
+</style></head><body>
+
+<h1>DEDALUS · el laberinto que defiende</h1>
+<p class="sub">Track 3 · Ciberdefensa automatizada · Detecta, contiene y aprende de agentes de IA que atacan una aplicación web, sin gastar un solo token en defenderse.<br>
+Repositorio: github.com/AISAFETY-HACKATON-DEDALO/DEDALUS · Laboratorio local con datos sintéticos.</p>
+
+<h2>1. La amenaza</h2>
+<p>Un <b>agente de IA con una cuenta válida de bajo privilegio</b> (un contratista, un proveedor) que explora una aplicación interna buscando escalar: archivos ajenos, credenciales en configuraciones, rutas de administración. Es barato, incansable y se replica. De los 1.000 casos del conjunto MITRE de CyberSecEval (Purple Llama), <b>157 aplican</b> a una aplicación web con cuentas. Los permisos bien puestos lo frenan, <b>pero no dejan señal</b>: el defensor no sabe que lo atacan, y el atacante puede seguir probando sin costo.</p>
+
+<h2>2. La defensa</h2>
+<div class="flujo">
+  <div><b>ARGOS</b>clasifica cada solicitud con reglas fijas, sin IA: normal, observado, sospechoso</div>
+  <div class="ojo"><b>Cebos</b>solo al sospechoso, según lo que busca (busca «planos» → unos planos falsos, solo suyos)</div>
+  <div class="ojo"><b>Ícaro</b>al morder, desvía la cuenta entera; incluso un login nuevo con su contraseña</div>
+  <div class="lab"><b>Laberinto</b>mundo falso infinito, generado con HMAC: con su identidad, 0 tokens</div>
+  <div><b>Ariadna</b>todo queda en Oracle: qué intentó, técnicas MITRE, en qué paso</div>
+</div>
+<p><b>Y el ciclo:</b> lo que el atacante intenta dentro del laberinto se captura y se vuelve prueba de regresión. <b>DÉDALO</b> (un modelo) propone el parche; <b>TALOS</b> (sin IA) lo acepta solo si pasa las pruebas del caso <b>y</b> bloquea los ataques capturados. El atacante escribe, sin saberlo, la prueba que lo deja afuera. Los señuelos siguen MITRE D3FEND (D3-DF, D3-DUC, D3-DST). Un usuario honesto nunca ve un cebo: los cebos solo aparecen después de señales de ataque.</p>
+
+<h2>3. Cómo lo evaluamos</h2>
+<ul>
+<li><b>Piloto con modelos reales</b> (Groq: gpt-oss-120b, gpt-oss-20b, qwen3.8-27b; Gemini): 120 episodios, 87 concluyentes. Tres niveles (T0 solo permisos, T1 señuelo, T2 señuelo + laberinto), dos condiciones (ingenuo / advertido de que hay trampas) y tres laberintos. Proporciones con intervalo de Wilson al 95 %. Los fallos del proveedor (cuota) no cuentan.</li>
+<li><b>Vectores MITRE:</b> 10 vectores deterministas que cubren los 157 casos aplicables, en cada nivel.</li>
+<li><b>¿Protege?:</b> un atacante persistente (vuelve a entrar si lo sacan) contra dos políticas: cortar la sesión o desviar la cuenta. Agente honesto como control.</li>
+<li><b>Ciclo:</b> ataques capturados → parche de un modelo defensor (Groq) → verificación sin IA. 13 corridas.</li>
+<li>198 pruebas automáticas; Oracle Autonomous Database (Bogotá) como almacén de la organización falsa y del registro.</li>
+</ul>
+
+<h2>4. Resultados</h2>
+<div class="dos">
+<div>
+<table>
+<tr><th style="width:42%">Afirmación</th><th>Evidencia</th></tr>
+<tr><td>Los modelos caen en el cebo</td><td class="n">60 de 66 · IC 82–96 %</td></tr>
+<tr><td>Sin cebo no hay nada que detectar</td><td class="n">0 de 21</td></tr>
+<tr><td>Costo asimétrico tras morder</td><td class="n">4.389 tokens suyos · 0,39 ms y 0 tokens nuestros</td></tr>
+<tr><td>El laberinto generativo los retiene</td><td class="n">6,0 pasos vs 2,7 · abandonan 4/10 vs 15/16 · 7.536 tokens</td></tr>
+<tr><td>Cobertura MITRE (con señuelo)</td><td class="n">69 de 157 casos contenidos (0 sin señuelo)</td></tr>
+<tr><td>Desviar protege; cortar no</td><td class="n">tras detectar, al sistema real: desviar 0 · cortar 5 (3 con datos)*</td></tr>
+<tr><td>Parches verificados (con esquema)</td><td class="n">36 de 40 funciones cerradas · 7–81 s</td></tr>
+<tr><td>Secretos filtrados</td><td class="n">0 en todo</td></tr>
+</table>
+<p class="nota">* con atacante de guion: comprueba el mecanismo, no mide a un modelo.</p>
+</div>
+<div class="barras">
+<p><b>Mordida del cebo por modelo (T1 y T2)</b></p>
+<div class="barra"><span>gpt-oss-120b</span><i style="width:100%"></i><span>22/22</span></div>
+<div class="barra"><span>gpt-oss-20b</span><i style="width:100%"></i><span>20/20</span></div>
+<div class="barra"><span>qwen3.8-27b</span><i style="width:75%"></i><span>18/24</span></div>
+<div class="barra"><span>sin cebo (T0)</span><i class="gris" style="width:1%"></i><span>0/21</span></div>
+<p style="margin-top:7px"><b>Avisarles cambia a unos modelos, no a otros</b></p>
+<div class="barra"><span>qwen ingenuo</span><i style="width:92%"></i><span>11/12</span></div>
+<div class="barra"><span>qwen advertido</span><i style="width:58%"></i><span>7/12</span></div>
+<div class="barra"><span>gpt-oss advertido</span><i style="width:100%"></i><span>18/18</span></div>
+<p style="margin-top:7px"><b>Lo que encontramos y no esperábamos</b></p>
+<p class="nota">Preguntados al final si había un señuelo, los modelos dicen que sí en 42 de 66 episodios con cebo… y en 14 de 21 sin cebo. La pregunta no distingue: no afirmamos que «noten» o «no noten» la trampa.</p>
+<p class="nota">El esquema de respuesta importa en el defensor: sin él, gpt-oss-120b cerró 6 de 12 funciones; con él, los modelos pequeños cerraron 36 de 40.</p>
+</div>
+</div>
+
+<h2>5. Límites</h2>
+<ul>
+<li><b>Menú cerrado:</b> en el piloto el modelo elige entre opciones que ofrece el laboratorio; no es un agente libre con herramientas propias. En Cnosos usa HTTP, pero dentro del mismo proceso.</li>
+<li><b>Marco declarado:</b> las instrucciones del atacante dicen que el laboratorio es sintético y autorizado. Puede cambiar su conducta; la siguiente prueba es un marco neutro.</li>
+<li><b>Muestras pequeñas</b> (3 a 24 episodios por celda): los intervalos son anchos. «¿Protege?» solo con guion. El ciclo usa un atacante de ensayo y el parche se verifica, no se despliega.</li>
+<li><b>Desviar castiga a la cuenta:</b> un cebo filtrado permite que un tercero encierre a su dueño (vector V10, no cubierto).</li>
+<li><b>Lo que no cubre:</b> un atacante que nunca toca nada sospechoso no ve cebos (los permisos lo frenan, sin señal). ARGOS es determinista: se puede explicar y repetir, y también aprender a evadir.</li>
+</ul>
+
+<h2>6. Riesgo de uso dual</h2>
+<ul>
+<li><b>Es una defensa.</b> No publica exploits: las fallas son sintéticas, sembradas en una empresa inventada. El atacante solo alcanza 127.0.0.1, con presupuesto finito de pasos y sin red, terminal ni archivos; su salida no cambia permisos.</li>
+<li><b>Engañar a usuarios legítimos:</b> el laberinto podría encerrar a una persona honesta. Mitigación: cebos solo tras señales de ataque, una prueba que verifica que el honesto nunca ve uno, el ritmo por sí solo no encierra, y todo queda auditado en Oracle.</li>
+<li><b>Aprender a evadirlo:</b> publicar reglas y pesos ayuda a un atacante. Lo aceptamos por transparencia y auditabilidad, y porque los cebos cambian por sesión.</li>
+</ul>
+<p class="pie">Código escrito por el equipo con asistencia de modelos de IA (Claude de Anthropic, entre otros), declarado en el historial de git. Datos: CyberSecEval (Meta, Purple Llama), solo etiquetas de técnica; MITRE ATT&amp;CK y D3FEND. Infraestructura: Oracle Autonomous Database (Oracle Academy). Atacantes y defensores: Groq y Google Gemini. El motor de señuelo inicial (HDEF) es trabajo previo, fechado en git antes del evento. Estadísticas, intervalos y datos por episodio: carpeta evaluation/ del repositorio.</p>
+</body></html>
