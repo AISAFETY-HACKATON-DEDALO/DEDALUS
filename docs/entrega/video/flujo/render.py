@@ -7,7 +7,7 @@ os.makedirs("escenas", exist_ok=True); t0 = time.time(); caps = 0
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox", "--allow-file-access-from-files"])
     pg = b.new_page(viewport={"width": 1920, "height": 1080})
-    pg.goto("file://video.html"); pg.evaluate("window.listo")
+    pg.goto("file://" + os.path.abspath("video.html")); pg.evaluate("window.listo")
     for i, (a, z) in enumerate(ESC):
         if i < 12: continue
         tmp, fin = f"escenas/{i:02d}.tmp.mp4", f"escenas/{i:02d}.mp4"
