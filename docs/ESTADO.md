@@ -1,4 +1,4 @@
-# Estado de DEDALUS · 14 nov 2026, 14:15
+# Estado de DEDALUS · 14 nov 2026, 15:45
 
 Para quien retome el trabajo (persona o modelo). Léelo antes de tocar código.
 
@@ -44,9 +44,11 @@ python -m unittest discover -s tests                         # 171 pruebas
 2. **Batería en Cnosos con Groq** (Yefran ya la tiene). Con eso, las cifras 3(a) y 3(d) quedan sobre el sistema que se ve en la demo, no sobre el laboratorio de Alice y Bob.
 3. **Robustez de ARGOS:** variantes que lo evadan (una sola señal, señales espaciadas en el tiempo) y medir cuántas pasan. Lo honesto es mostrar también la cifra de evasión.
 4. **TALOS** (Yefran): las 6 fallas CWE con Groq, más variantes de los exploits.
-5. **Ensayo de la demo:** un guion de 3 minutos (ver abajo) y un respaldo grabado.
+5. ~~Ensayo de la demo~~ → **el video es la entrega principal.** Guion, montaje y reglas en `docs/DEMO.md`. Se graba con Oracle conectado y el enlace se pega en el README.
 
-## Demo de 3 minutos
+**Entrega:** la sección «Entrega» al comienzo del `README.md` responde las cuatro preguntas, con enlaces a la evidencia, lo que no se alcanzó a medir y el trabajo previo. Si cambia una cifra, se cambia ahí.
+
+## Demo de 3 minutos (versión completa, con lo que se dice: `docs/DEMO.md`)
 
 1. El panel abierto con ALMACÉN ORACLE. Contar en una frase qué es Cnosos.
 2. **ATACAR** (guion persistente o Groq). En el hilo: ARGOS → observado → sospechoso → el cebo aparece en su búsqueda → muerde → Ícaro → vuelve a entrar y cae al laberinto. La cifra «al real tras detectar» se queda en **0**.

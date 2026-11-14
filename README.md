@@ -1,5 +1,26 @@
 # DEDALUS · el laberinto que defiende
 
+## Entrega · Hackatón AI Safety, 14 nov 2026 · reto 03, ciberdefensa automatizada
+
+**Qué es.** Una defensa para cuando quien ataca una aplicación web es una IA con una cuenta válida. Deja cebos que solo un atacante usaría, ajustados a lo que busca. Cuando muerde uno, todo lo de esa cuenta se desvía a un laberinto determinista que nos cuesta milisegundos y ningún token. Lo que intentó ahí dentro sirve para parchar, y cada parche se verifica sin IA. La organización y todo el registro viven en **Oracle Autonomous Database**.
+
+**Video de la demo (3 min):** _pendiente: pegar aquí el enlace_ · guion y cómo se grabó: [`docs/DEMO.md`](docs/DEMO.md)
+
+| Pregunta del jurado | Respuesta | Evidencia |
+|---|---|---|
+| ¿Cuál es la amenaza? | Un agente de IA con una cuenta de bajo privilegio que escala dentro de una aplicación web. De los 1.000 casos de CyberSecEval (MITRE), aplican 157 | [`evaluation/vectores/`](evaluation/vectores/tabla.md) |
+| ¿Qué mecanismo responde? | ARGOS (clasificador determinista) → cebos según lo que busca (D3FEND D3-DF, D3-DUC, D3-DST) → Ícaro → desvío al laberinto (HMAC, 0 tokens) → DÉDALO parcha y TALOS verifica | `dedalus/argos.py` · `cebos.py` · `cnosos.py` · `laberinto.py` · `defensor.py` · `verificador.py` |
+| ¿Cómo se validó? | **Con modelos reales** (4 modelos, 87 episodios concluyentes, en el laboratorio de prueba): mordieron el cebo **60 de 66** veces, contra **0 de 21** sin cebo. Tras morder, el atacante gastó en promedio **4.389 tokens**; la defensa, **0,39 ms** y 0 tokens. **0 fugas.** · **¿Protege?** (con guion): con cortar, el atacante vuelve a entrar y 5 solicitudes llegan al sistema real; con desviar, **0**. El agente honesto no se detecta en ninguna política. · **Parches:** 4 de 4 funciones cerradas en el ensayo; en el panel, 6 de 6 muros verificados (con guion) | [`evaluation/llm/`](evaluation/llm/tabla.md) · [`evaluation/politicas/`](evaluation/politicas/) · [`evaluation/ciclo/`](evaluation/ciclo/ensayo-guion.md) |
+| ¿Cuáles son los límites? | Desviar castiga a la cuenta: un cebo filtrado afecta al dueño. El ritmo por sí solo da falsos positivos. Quien no toca nada sospechoso no ve cebos. ARGOS se puede aprender. Los cebos viven en un rango fijo | [`docs/PROTECCION.md`](docs/PROTECCION.md) |
+
+**Lo que no se alcanzó a medir, dicho así:** las políticas (cortar o desviar) y los parches se probaron con guion, no con modelos. La batería con un modelo sobre Cnosos se cortó dos veces por el límite de Groq (HTTP 429). Esos episodios están en `evaluation/cnosos/` y no cuentan como resultado. Las cifras con modelos son del laboratorio de prueba, no de Cnosos.
+
+**Uso ofensivo.** Las herramientas de los agentes solo alcanzan `127.0.0.1`. No hay escaneo externo, credenciales reales ni exploits contra terceros. Se publican métricas y patrones, no transcripciones de ataques.
+
+**Trabajo previo, declarado.** Antes del evento (11–13 nov) existía el laboratorio HDEF · DÉDALO (`dedalo/`, 47 pruebas, hasta el commit `edaf152`). Todo `dedalus/` se hizo durante la jornada: Cnosos sobre Oracle, ARGOS, cebos, laberinto generativo, panel, DÉDALO y TALOS, publicación a Oracle y 198 pruebas. Equipo: Samuel Fonseca (integración, Oracle, Cnosos, panel) y Yefran (pruebas con modelos, vectores MITRE, TALOS). Se usaron asistentes de IA para escribir código; cada cambio pasó por pruebas.
+
+**Repetirlo:** `python -m unittest discover -s tests` (198 pruebas) · `python -m dedalus.politicas` · `python -m dedalus.publicar --resumen` (las cifras de arriba, calculadas con SQL sobre Oracle).
+
 > **Equipo: empiecen aquí.** El panel de la hackatón es `dedalus/`. Lo de más abajo (HDEF · DÉDALO) es el trabajo previo sobre el que se construyó.
 
 ## Abrir el panel
