@@ -23,6 +23,16 @@ else
 fi
 unset clave
 
+for par in "GEMINI_API_KEY:Gemini" "GROQ_API_KEY:Groq"; do
+  var="${par%%:*}"; nombre="${par##*:}"
+  if [ -z "${!var:-}" ]; then
+    read -r -s -p "Llave de $nombre (Enter = sin $nombre): " valor; echo
+    [ -n "$valor" ] && export "$var=$valor"
+    unset valor
+  fi
+  if [ -n "${!var:-}" ]; then echo "  $nombre: lista"; else echo "  $nombre: sin llave"; fi
+done
+
 PY=python3
 command -v python3 >/dev/null 2>&1 || PY=python
 exec "$PY" -m dedalus.panel --abrir "$@"

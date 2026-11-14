@@ -65,7 +65,8 @@ select{font:inherit;color:var(--tiza);background:#0b0b0b;border:1px solid #333;b
 .filtros{display:inline-flex;gap:2px;margin-left:auto}
 .filtros button,.pestanas button,.nuevas{font:400 11px/1 var(--mono);letter-spacing:.07em;color:var(--regolito);background:none;border:1px solid transparent;border-radius:999px;padding:3px 8px;cursor:pointer}
 .filtros button.activo,.pestanas button.activo{color:var(--tiza);border-color:#444}
-.pestanas button{font:400 18px/1 var(--pix);letter-spacing:.06em;padding:2px 8px}
+.pestanas{flex-wrap:nowrap;overflow:hidden}
+.pestanas button{font:400 16px/1 var(--pix);letter-spacing:.05em;padding:2px 6px;white-space:nowrap}
 .pestanas button:first-child{padding-left:0}
 .nuevas{color:#050505;background:var(--hilo)}
 .stats{overflow:auto;min-height:0}

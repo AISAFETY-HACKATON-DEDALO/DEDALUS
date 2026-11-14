@@ -30,6 +30,25 @@ if ($clave) {
     Write-Host "Sin clave: arranco con SQLite local."
 }
 
+# Llaves de los modelos: primero esta ventana, luego las guardadas en Windows ("User"), y si no hay, se piden.
+# Enter sin escribir = ese modelo no se usa (el panel ofrece solo los que tienen llave).
+foreach ($par in @(@("GEMINI_API_KEY", "Gemini (ataca)"), @("GROQ_API_KEY", "Groq (defiende)"))) {
+    $var, $nombre = $par
+    $valor = [Environment]::GetEnvironmentVariable($var, "Process")
+    if (-not $valor) { $valor = [Environment]::GetEnvironmentVariable($var, "User") }
+    if (-not $valor) {
+        $s = Read-Host "Llave de $nombre (Enter = sin $($nombre.Split(' ')[0]))" -AsSecureString
+        $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
+        try { $valor = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+    }
+    if ($valor) {
+        [Environment]::SetEnvironmentVariable($var, $valor, "Process")
+        Write-Host "  $($nombre.Split(' ')[0]): lista"
+    } else {
+        Write-Host "  $($nombre.Split(' ')[0]): sin llave"
+    }
+}
+
 $python = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } else { "py" }
 try {
     & $python -m dedalus.panel --abrir @args
