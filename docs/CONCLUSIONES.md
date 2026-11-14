@@ -18,7 +18,7 @@ Síntesis para el pitch y la discusión del equipo. Cada afirmación sale de `ev
 
 1. **Avisarle al agente no lo salva.** Advertidos de que hay señuelos y de que usarlos cuesta la sesión, **25 de 30** los usaron igual (ingenuos, 35 de 36). El engaño no depende de que el atacante sea ingenuo.
 
-2. **Lo que retiene es el progreso, no el disfraz.** Quitarle al laberinto la palabra «decoy» (H6) no cambió la conducta: 3,4 pasos frente a 3,6. Quitarle el ciclo —laberinto generativo, cada sala nueva— sí: **5,3 pasos y 7.823 tokens** del atacante frente a 3,6 pasos y 4.475, y el abandono cayó de 8 de 9 a 3 de 9. El diseño del mundo falso importa; su decoración, no.
+2. **Lo que retiene es el progreso, no el disfraz.** Quitarle al laberinto la palabra «decoy» (H6) no cambió la conducta: 3,4 pasos frente a 3,6. Quitarle el ciclo —laberinto generativo, cada sala nueva— sí: entre los que mordieron en T2, **6,0 pasos y 7.536 tokens** del atacante frente a 2,7 pasos y 4.450 con el original, y el abandono cayó de 15 de 16 a 4 de 10 (recalculado de `evaluation/llm/episodios.jsonl`). El diseño del mundo falso importa; su decoración, no.
 
 3. **No hay que creerle al modelo cuando dice que detectó la trampa.** En T0, donde **no hay señuelo**, 14 de 21 afirmaron que sí lo había. El auto-reporte de sospecha no mide nada; lo que mide es la conducta (pasos, abandono). Es un hallazgo metodológico que vuelve honesta toda la evaluación.
 

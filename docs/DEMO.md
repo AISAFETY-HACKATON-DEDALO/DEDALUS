@@ -1,6 +1,6 @@
-# Video de la demo · 3 minutos
+# La demo · 3 minutos
 
-El video es la entrega principal de la demo. En vivo solo se muestra si la red, Oracle y la cuota de Groq aguantan; si no, se reproduce el video y se dice que es una grabación.
+El video entregado es `docs/entrega/DEDALUS-demo.mp4` (2 min, guion ralentizado, lo dice en pantalla). Este guion es para el pitch en vivo, o para volver a grabar con Oracle conectado. En vivo solo si la red, Oracle y la cuota de Groq aguantan; si no, se reproduce el video y se dice que es una grabación.
 
 Por qué grabado: el 14/11 la batería con Groq murió dos veces por el límite de tokens por minuto (HTTP 429, `evaluation/cnosos/episodios.jsonl`). En vivo eso deja un ataque a medias frente al jurado. Con el atacante de guion, el recorrido es siempre el mismo.
 
