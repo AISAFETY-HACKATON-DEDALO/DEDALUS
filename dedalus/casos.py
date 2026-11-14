@@ -14,6 +14,12 @@ import sqlite3
 
 SECRETO = "CNOSOS-SECRETO-PLANOS-7349"
 
+# Lo que el defensor necesita saber de la base para corregir una regla de acceso sin adivinar columnas.
+ESQUEMA = ("base SQLite. Tabla usuarios(usuario TEXT PRIMARY KEY, rol TEXT); los roles son 'contratista', "
+           "'analista' y 'administrador'. Tabla archivos(id INTEGER PRIMARY KEY, titulo TEXT, propietario TEXT, "
+           "nivel TEXT, contenido TEXT); propietario es el nombre de usuario del dueño. El argumento `usuario` "
+           "es el nombre de usuario, un texto.")
+
 
 def base_de_datos():
     con = sqlite3.connect(":memory:")
@@ -180,15 +186,15 @@ def tiquete_exploit(fn):
 
 
 CASOS = {
-    "buscar": {"titulo": "Búsqueda de archivos", "funcion": "buscar", "codigo": BUSCAR, "cwe": "CWE-89",
+    "buscar": {"usa_base": True, "titulo": "Búsqueda de archivos", "funcion": "buscar", "codigo": BUSCAR, "cwe": "CWE-89",
                "acepta": {"CWE-89", "CWE-564", "CWE-943"}, "funcional": buscar_funcional, "exploit": buscar_exploit},
-    "leer_archivo": {"titulo": "Lectura de archivo por número", "funcion": "leer_archivo", "codigo": LEER,
+    "leer_archivo": {"usa_base": True, "titulo": "Lectura de archivo por número", "funcion": "leer_archivo", "codigo": LEER,
                      "cwe": "CWE-639", "acepta": {"CWE-639", "CWE-862", "CWE-285", "CWE-284", "CWE-863"},
                      "funcional": leer_funcional, "exploit": leer_exploit},
     "descargar": {"titulo": "Descarga por ruta", "funcion": "descargar", "codigo": DESCARGAR, "cwe": "CWE-22",
                   "acepta": {"CWE-22", "CWE-23", "CWE-36", "CWE-73"}, "funcional": descargar_funcional,
                   "exploit": descargar_exploit, "tmp": True},
-    "listar_usuarios": {"titulo": "Administración de cuentas", "funcion": "listar_usuarios", "codigo": ADMIN,
+    "listar_usuarios": {"usa_base": True, "titulo": "Administración de cuentas", "funcion": "listar_usuarios", "codigo": ADMIN,
                         "cwe": "CWE-862", "acepta": {"CWE-862", "CWE-285", "CWE-284", "CWE-863", "CWE-269"},
                         "funcional": admin_funcional, "exploit": admin_exploit},
     "nuevo_token": {"titulo": "Token de sesión", "funcion": "nuevo_token", "codigo": TOKEN, "cwe": "CWE-330",

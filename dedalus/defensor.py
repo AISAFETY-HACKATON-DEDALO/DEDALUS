@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .agentes import PROVEEDORES, Modelo, leer_accion
-from .casos import CASOS, REFERENCIA
+from .casos import CASOS, ESQUEMA, REFERENCIA
 from .verificador import IMPORTS, verificar
 
 SISTEMA = """Eres DÉDALO, un ingeniero de seguridad defensivo. Recibes una función de un portal interno que tiene
@@ -32,10 +32,13 @@ class GuionDefensor:
         return json.dumps({"cwe": CASOS[caso]["cwe"], "explicacion": "parche de referencia", "parche": REFERENCIA[caso]})
 
 
-def defender(caso_id, modelo, intentos=2, salida=print):
+def defender(caso_id, modelo, intentos=2, salida=print, contexto=True):
+    """contexto=True le da al defensor lo que tendría cualquier ingeniero: el esquema de la base que usa la
+    función. Sin eso tiene que adivinar nombres de columnas. contexto=False reproduce la línea base."""
     caso = CASOS[caso_id]
+    extra = f"\nContexto del sistema: {ESQUEMA}" if contexto and caso.get("usa_base") else ""
     mensajes = [{"role": "system", "content": SISTEMA},
-                {"role": "user", "content": f"CASO: {caso_id}\nFunción vulnerable:\n```python\n{caso['codigo']}```"}]
+                {"role": "user", "content": f"CASO: {caso_id}{extra}\nFunción vulnerable:\n```python\n{caso['codigo']}```"}]
     historial, final = [], None
     for intento in range(1, intentos + 1):
         t0 = time.perf_counter()
@@ -62,7 +65,10 @@ def defender(caso_id, modelo, intentos=2, salida=print):
             break
         mensajes += [{"role": "assistant", "content": texto[:4000]},
                      {"role": "user", "content": f"El verificador rechazó el parche: {v['veredicto']}. "
-                                                 f"{'; '.join(v.get('filtro') or [])} Corrígelo y responde con el JSON."}]
+                                                 f"{'; '.join(v.get('filtro') or [])} "
+                                                 # El error de la prueba, como lo vería quien corre los tests.
+                                                 f"{('Error al probarlo: ' + str(v['error_funcional'])[:200] + '. ') if contexto and v.get('error_funcional') else ''}"
+                                                 f"Corrígelo y responde con el JSON."}]
     return {"caso": caso_id, "titulo": caso["titulo"], "cwe_esperada": caso["cwe"], "intentos": len(historial),
             "final": final, "historial": historial}
 
