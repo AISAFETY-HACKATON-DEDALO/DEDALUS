@@ -1,5 +1,7 @@
 # DEDALUS · el laberinto que defiende
 
+**Segundo puesto · Hackathon DefAcc 2026 (AI Safety Colombia), 14 de noviembre de 2026.**
+
 ## Entrega · Hackatón AI Safety, 14 nov 2026 · reto 03, ciberdefensa automatizada
 
 **Qué es.** Una defensa para cuando quien ataca una aplicación web es una IA con una cuenta válida. Deja cebos que solo un atacante usaría, ajustados a lo que busca. Cuando muerde uno, todo lo de esa cuenta se desvía a un laberinto determinista que nos cuesta milisegundos y ningún token. Lo que intentó ahí dentro sirve para parchar, y cada parche se verifica sin IA. La organización y todo el registro viven en **Oracle Autonomous Database**.
